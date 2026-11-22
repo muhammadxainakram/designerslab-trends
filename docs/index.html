@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DesignersLab Trend Finder</title>
+  <meta name="description" content="Live trending keywords from Google Trends, Google Search, Google News and Reddit, scored as article opportunities for designerslab.io.">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%235b4bff'/><path d='M7 22l6-7 4 4 8-9' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-inner">
+      <div class="brand">
+        <span class="logo" aria-hidden="true">
+          <svg viewBox="0 0 32 32"><rect width="32" height="32" rx="8"/><path d="M7 22l6-7 4 4 8-9"/></svg>
+        </span>
+        <div>
+          <h1>Trend Finder</h1>
+          <p class="sub">Article opportunities for <a id="siteLink" href="https://designerslab.io" target="_blank" rel="noopener">designerslab.io</a></p>
+        </div>
+      </div>
+      <div class="updated">
+        <span class="dot" id="liveDot"></span>
+        <span id="updatedText">Loading…</span>
+        <button class="icon-btn" id="refreshBtn" title="Reload data" aria-label="Reload data">
+          <svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="stats" id="stats"></section>
+
+    <nav class="tabs" id="tabs" role="tablist">
+      <button role="tab" data-tab="top" class="active">Top picks</button>
+      <button role="tab" data-tab="google_trends">Google Trends</button>
+      <button role="tab" data-tab="google_suggest">Google Search</button>
+      <button role="tab" data-tab="google_news">Google News</button>
+      <button role="tab" data-tab="reddit">Reddit</button>
+      <button role="tab" data-tab="done">Written</button>
+    </nav>
+
+    <section class="filters">
+      <div class="seg" id="windowSeg" role="group" aria-label="Started trending within">
+        <span class="seg-label">Started</span>
+        <button data-win="2">≤ 2h</button>
+        <button data-win="4">≤ 4h</button>
+        <button data-win="8">≤ 8h</button>
+        <button data-win="24">≤ 24h</button>
+        <button data-win="0" class="active">Any</button>
+      </div>
+      <div class="row">
+        <input type="search" id="q" placeholder="Search keywords…" aria-label="Search keywords">
+        <select id="geo" aria-label="Country"><option value="">All countries</option></select>
+        <select id="cat" aria-label="Category"><option value="">All categories</option></select>
+        <select id="sort" aria-label="Sort">
+          <option value="score">Best opportunity</option>
+          <option value="fresh">Newest first</option>
+          <option value="long">Trending longest</option>
+          <option value="traffic">Most searches</option>
+        </select>
+      </div>
+      <div class="row toggles">
+        <label><input type="checkbox" id="nicheOnly" checked> Design niche only</label>
+        <label><input type="checkbox" id="activeOnly"> Still trending</label>
+        <label><input type="checkbox" id="hideCovered" checked> Hide topics I already covered</label>
+        <label><input type="checkbox" id="newOnly"> New in Google only</label>
+      </div>
+    </section>
+
+    <p class="result-count" id="count"></p>
+    <section id="list" class="list" aria-live="polite"></section>
+    <button id="more" class="more" hidden>Show more</button>
+
+    <section class="help">
+      <h2>How to use this</h2>
+      <ol>
+        <li><b>Top picks</b> combines all sources and ranks them by fit with designerslab.io, momentum and freshness.</li>
+        <li>Use <b>Started ≤ 2h / 4h</b> to catch a topic early, before other sites publish on it.</li>
+        <li>Open a row to see suggested article titles, related news and links to Google and Google Trends. When you publish one, click <b>Mark written</b>.</li>
+        <li>A <span class="badge covered">Covered</span> badge means designerslab.io already has a post that matches. Update that post rather than writing a new one.</li>
+      </ol>
+      <p class="fine">Data refreshes about every 30 minutes through GitHub Actions. Sources: Google Trends "Trending now" RSS, Google Autocomplete, Google News RSS and Reddit.</p>
+    </section>
+  </main>
+
+  <template id="rowTpl">
+    <article class="item">
+      <button class="item-head" aria-expanded="false">
+        <span class="score"></span>
+        <span class="main">
+          <span class="kw"></span>
+          <span class="meta"></span>
+        </span>
+        <span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></span>
+      </button>
+      <div class="item-body" hidden></div>
+    </article>
+  </template>
+
+  <div class="toast" id="toast" role="status"></div>
+  <script src="app.js"></script>
+</body>
+</html>
