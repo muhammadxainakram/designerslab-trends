@@ -17,7 +17,8 @@
     "color palette", "color of the year", "graphic design trends",
     "best fonts for", "free graphics", "free textures", "free brushes"
   ],
-  "suggest_modifiers": ["", " 2026", " 2027", " free", " for"],
+  "suggest_modifiers": ["", " {year}", " {next_year}", " free", " for"],
+  "suggest_modifiers_live": ["", " {year}", " for"],
 
   "news_queries": [
     "graphic design", "font OR typeface", "new logo OR rebrand", "Adobe Photoshop",

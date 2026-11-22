@@ -47,6 +47,9 @@ BOT_UA = "designerslab-trend-finder/1.0 (personal keyword research dashboard)"
 HISTORY_KEEP_HOURS = 72
 
 STATUS: dict[str, dict] = {}
+# LIVE mode = running as an on-demand web function (Vercel): no history file,
+# everything in parallel with short timeouts so a full refresh takes ~15-25s.
+LIVE = os.environ.get("TREND_LIVE") == "1"
 
 
 # --------------------------------------------------------------------------- utils
@@ -56,6 +59,8 @@ def log(*a):
 
 def http_get(url: str, headers: dict | None = None, timeout: int = 20, retries: int = 2,
              data: bytes | None = None) -> str:
+    if LIVE:
+        timeout, retries = min(timeout, 8), min(retries, 1)
     h = {"User-Agent": BROWSER_UA, "Accept-Language": "en-US,en;q=0.9"}
     h.update(headers or {})
     last = None
@@ -69,7 +74,7 @@ def http_get(url: str, headers: dict | None = None, timeout: int = 20, retries: 
             code = getattr(e, "code", None)
             if code in (403, 404):
                 break
-            time.sleep(1.5 * (attempt + 1) + (3 if code == 429 else 0))
+            time.sleep(0.5 if LIVE else 1.5 * (attempt + 1) + (3 if code == 429 else 0))
     raise last  # type: ignore[misc]
 
 
@@ -393,13 +398,20 @@ def fetch_google_trends(geo: str) -> list[dict]:
 
 def google_trends_items(hist: dict, posts: list[dict]) -> list[dict]:
     items, seen_keys, ok = [], set(), 0
-    for geo in CONFIG["google_trends_geos"]:
+
+    def safe(geo):
         try:
-            rows = fetch_google_trends(geo)
-            ok += 1
+            return geo, fetch_google_trends(geo)
         except Exception as e:  # noqa: BLE001
             log("trends failed", geo, e)
+            return geo, None
+
+    with ThreadPoolExecutor(max_workers=6) as ex:
+        fetched = list(ex.map(safe, CONFIG["google_trends_geos"]))
+    for geo, rows in fetched:
+        if rows is None:
             continue
+        ok += 1
         for r in rows:
             if not r["title"]:
                 continue
@@ -417,7 +429,6 @@ def google_trends_items(hist: dict, posts: list[dict]) -> list[dict]:
             h["news"] = r["news"][:3]
             h["picture"] = r["picture"]
             hist["trends"][key] = h
-        time.sleep(0.5)
     STATUS["google_trends"] = {"ok": ok > 0, "geos_ok": ok, "geos": len(CONFIG["google_trends_geos"])}
 
     # Build items from history (active + ended within the last 24h)
@@ -501,14 +512,15 @@ def suggest(q: str) -> list[str]:
 def google_suggest_items(hist: dict, posts: list[dict]) -> list[dict]:
     queries = []
     for s in CONFIG["suggest_seeds"]:
-        for m in CONFIG["suggest_modifiers"]:
+        for m in (CONFIG.get("suggest_modifiers_live") if LIVE else None) or CONFIG["suggest_modifiers"]:
+            m = m.replace("{year}", str(NOW.year)).replace("{next_year}", str(NOW.year + 1))
             queries.append((s, (s + m).strip()))
     hol = upcoming_holidays()
     for h in hol:
         for tail in (" fonts", " templates", " mockup", " flyer", " ai prompt", " svg", " poster"):
             queries.append((f"{h.lower()} (upcoming)", h.lower() + tail))
 
-    with ThreadPoolExecutor(max_workers=4) as ex:
+    with ThreadPoolExecutor(max_workers=16 if LIVE else 4) as ex:
         results = list(ex.map(lambda q: (q[0], q[1], suggest(q[1])), queries))
 
     ok = sum(1 for _, _, r in results if r)
@@ -704,12 +716,18 @@ QUESTION_RE = re.compile(r"\?|^(how|what|which|why|where|is|are|can|does|do|shou
 def reddit_items(hist: dict, posts: list[dict]) -> list[dict]:
     token = reddit_token()
     res, ok = [], 0
-    for sub in CONFIG["subreddits"]:
-        r = reddit_posts(sub, token)
+    if LIVE:
+        with ThreadPoolExecutor(max_workers=6) as ex:
+            fetched = list(ex.map(lambda sub: reddit_posts(sub, token), CONFIG["subreddits"]))
+    else:
+        fetched = []
+        for sub in CONFIG["subreddits"]:
+            fetched.append(reddit_posts(sub, token))
+            time.sleep(1.2 if token else 2.5)
+    for r in fetched:
         if r is not None:
             ok += 1
             res.extend(r)
-        time.sleep(1.2 if token else 2.5)
     STATUS["reddit"] = {"ok": ok > 0, "subs_ok": ok, "subs": len(CONFIG["subreddits"]),
                         "mode": "api" if token else "rss"}
     items = []
@@ -756,31 +774,44 @@ def reddit_items(hist: dict, posts: list[dict]) -> list[dict]:
 
 
 # --------------------------------------------------------------------------- main
-def main() -> int:
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    hist = load_history()
+def collect(hist: dict) -> dict:
+    """Fetch every source and return the dashboard payload. Updates `hist` in place."""
+    global NOW
+    NOW = datetime.now(timezone.utc)
+    STATUS.clear()
     posts = load_site_posts()
 
-    items: list[dict] = []
-    for name, fn in (("google_trends", lambda: google_trends_items(hist, posts)),
-                     ("google_suggest", lambda: google_suggest_items(hist, posts)),
-                     ("google_news", lambda: google_news_items(posts)),
-                     ("reddit", lambda: reddit_items(hist, posts))):
+    def run(name, fn):
         t0 = time.time()
         try:
             got = fn()
-            items.extend(got)
             log(f"{name}: {len(got)} items in {time.time() - t0:.1f}s")
+            return got
         except Exception as e:  # noqa: BLE001
             STATUS[name] = {"ok": False, "error": str(e)[:200]}
             log(f"{name} crashed: {e}")
+            return []
+
+    jobs = (("google_trends", lambda: google_trends_items(hist, posts)),
+            ("google_suggest", lambda: google_suggest_items(hist, posts)),
+            ("google_news", lambda: google_news_items(posts)),
+            ("reddit", lambda: reddit_items(hist, posts)))
+    items: list[dict] = []
+    if LIVE:
+        with ThreadPoolExecutor(max_workers=4) as ex:
+            for got in ex.map(lambda j: run(*j), jobs):
+                items.extend(got)
+    else:
+        for j in jobs:
+            items.extend(run(*j))
 
     items.sort(key=lambda x: x["score"], reverse=True)
     hist["runs"].append(iso(NOW))
     prune_history(hist)
 
-    out = {
+    return {
         "generated_at": iso(NOW),
+        "mode": "live" if LIVE else "scheduled",
         "site": {"name": CONFIG["site"]["name"], "url": CONFIG["site"]["url"],
                  "posts_indexed": len(posts)},
         "status": STATUS,
@@ -788,6 +819,17 @@ def main() -> int:
                    for s in ("google_trends", "google_suggest", "google_news", "reddit")},
         "items": items,
     }
+
+
+def empty_history() -> dict:
+    return {"trends": {}, "suggest": {}, "reddit": {}, "runs": []}
+
+
+def main() -> int:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    hist = load_history()
+    out = collect(hist)
+    items = out["items"]
     TRENDS_FILE.write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     HISTORY_FILE.write_text(json.dumps(hist, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     log(f"wrote {len(items)} items -> {TRENDS_FILE}")

@@ -2,6 +2,7 @@
   "use strict";
 
   const DATA_URL = "data/trends.json";
+  const API_URL = "/api/trends";
   const PAGE = 40;
   const SRC_LABEL = {
     google_trends: "Google Trends",
@@ -124,7 +125,7 @@
       if (it.traffic_label) b.push(`<span>${esc(it.traffic_label)} searches</span>`);
     } else if (it.source === "google_suggest") {
       if (it.is_new) b.push(`<span class="badge new">New · ${dur(h)} ago</span>`);
-      else b.push(`<span>In Google suggestions for ${dur(h)}</span>`);
+      else if (data.mode !== "live") b.push(`<span>In Google suggestions for ${dur(h)}</span>`);
       b.push(`<span>#${it.rank} for “${esc(it.seed)}”</span>`);
     } else if (it.source === "google_news") {
       b.push(`<span class="${h <= 4 ? "badge hot" : ""}">${dur(h)} ago</span>`);
@@ -292,17 +293,28 @@
   // ---------- load ----------
   async function load(manual) {
     const btn = $("#refreshBtn"); btn.classList.add("spin");
+    if (!data) $("#list").innerHTML = `<div class="empty">Fetching live trends from Google and Reddit… this can take up to 20 seconds.</div>`;
     try {
-      const r = await fetch(`${DATA_URL}?t=${Math.floor(now() / 60000)}`, { cache: "no-store" });
-      if (!r.ok) throw new Error(r.status);
-      const fresh = await r.json();
+      let fresh = null;
+      // Vercel: live API (CDN-cached for 30 min). GitHub Pages: static file built by Actions.
+      if (!location.hostname.endsWith("github.io")) {
+        try {
+          const r = await fetch(API_URL);
+          if (r.ok) fresh = await r.json();
+        } catch { /* fall back to the static file */ }
+      }
+      if (!fresh || !fresh.items) {
+        const r = await fetch(`${DATA_URL}?t=${Math.floor(now() / 60000)}`, { cache: "no-store" });
+        if (!r.ok) throw new Error(r.status);
+        fresh = await r.json();
+      }
       if (!manual && data && fresh.generated_at === data.generated_at) { renderHeader(); return; }
       data = fresh;
       renderHeader(); renderStats(); fillSelects(); render();
       if (manual) toast("Data reloaded");
     } catch (err) {
       $("#updatedText").textContent = "Could not load data";
-      if (!data) $("#list").innerHTML = `<div class="empty">No data yet. The first GitHub Actions run creates it within a few minutes.</div>`;
+      if (!data) $("#list").innerHTML = `<div class="empty">Couldn't load trends right now. Press the reload button to try again.</div>`;
     } finally { btn.classList.remove("spin"); }
   }
   syncControls();

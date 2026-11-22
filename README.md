@@ -1,7 +1,13 @@
 # DesignersLab Trend Finder
 
 A free dashboard that finds trending keywords to write about on [designerslab.io](https://designerslab.io).
-It runs on GitHub Actions every 30 minutes and is hosted on GitHub Pages, so you can open it from any device.
+It's hosted on **Vercel** (free). The page calls `/api/trends`, a small Python function that fetches
+every source live. Vercel's CDN caches the result for 30 minutes, so the page stays fast and the sources
+aren't hammered.
+
+It can also run on **GitHub Pages + GitHub Actions** (the workflow in `.github/workflows` refreshes
+`docs/data/trends.json` every 30 minutes and tracks history, e.g. which Google suggestions are new).
+This only works if GitHub Actions is enabled for the account.
 
 ## Sources (all free, no API keys needed)
 
