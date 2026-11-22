@@ -20,6 +20,8 @@ from fetch_trends import CONFIG, http_get
 
 SITE = CONFIG["site"]["url"].rstrip("/")
 HOST = urlparse(SITE).netloc
+AI_SEARCH_BOTS = ["OAI-SearchBot", "ChatGPT-User", "PerplexityBot", "Claude-SearchBot", "Bingbot", "Googlebot"]
+AI_TRAINING_BOTS = ["GPTBot", "ClaudeBot", "Google-Extended", "Applebot-Extended", "CCBot", "Meta-ExternalAgent", "Bytespider"]
 AI_BOTS = ["GPTBot", "OAI-SearchBot", "ChatGPT-User", "ClaudeBot", "PerplexityBot", "Google-Extended",
            "Applebot-Extended", "CCBot", "Bingbot"]
 QUESTION_RE = re.compile(r"^(what|how|why|which|when|where|who|can|is|are|does|do|should)\b|\?\s*$", re.I)
@@ -185,20 +187,57 @@ def collect() -> dict:
     checks.append(check("Technical", "robots.txt lists the sitemap", "sitemap" in robots.lower(),
                         "Found a Sitemap: line" if "sitemap" in robots.lower() else "No Sitemap: line in robots.txt",
                         "Add 'Sitemap: https://designerslab.io/sitemap_index.xml' to robots.txt (Rank Math → General Settings → Edit robots.txt)."))
-    blocked = []
-    cur: list[str] = []
+    # Parse robots.txt groups (several User-agent lines can share one group).
+    groups: list[dict] = []
+    cur = None
     for line in robots.splitlines():
         line = line.split("#")[0].strip()
-        if line.lower().startswith("user-agent:"):
-            cur = [line.split(":", 1)[1].strip()]
-        elif line.lower().startswith("disallow:") and line.split(":", 1)[1].strip() == "/":
-            blocked += [b for b in AI_BOTS if any(b.lower() == c.lower() for c in cur)]
-    checks.append(check("GEO", "AI search crawlers can read the site", not blocked,
-                        "Blocked: " + ", ".join(blocked) if blocked else "No AI crawler is blocked in robots.txt",
-                        "Remove the 'Disallow: /' rules for these bots so ChatGPT, Perplexity, Claude, Gemini and Bing Copilot can cite your pages."))
+        if not line or ":" not in line:
+            continue
+        key, val = (x.strip() for x in line.split(":", 1))
+        key = key.lower()
+        if key == "user-agent":
+            if cur is None or cur["rules"]:
+                cur = {"agents": [], "rules": []}
+                groups.append(cur)
+            cur["agents"].append(val.lower())
+        elif key in ("allow", "disallow") and cur is not None:
+            cur["rules"].append((key, val))
+
+    def group_for(bot):
+        named = [g for g in groups if bot.lower() in g["agents"]]
+        return named[0] if named else next((g for g in groups if "*" in g["agents"]), None)
+
+    def fully_blocked(bot):
+        g = group_for(bot)
+        return bool(g) and ("disallow", "/") in g["rules"]
+
+    search_blocked = [b for b in AI_SEARCH_BOTS if fully_blocked(b)]
+    checks.append(check("GEO", "AI search bots can crawl (ChatGPT search, Perplexity, Claude)", not search_blocked,
+                        "Blocked: " + ", ".join(search_blocked) if search_blocked else
+                        "Allowed: " + ", ".join(AI_SEARCH_BOTS),
+                        "Allow these bots: they fetch pages to answer users and link back. Blocking them removes you from AI answers."))
+    training_blocked = [b for b in AI_TRAINING_BOTS if fully_blocked(b)]
+    checks.append(check("GEO", "AI training crawlers (your choice)", True,
+                        ("Blocked by choice: " + ", ".join(training_blocked) if training_blocked else "None blocked")
+                        + ". Training crawlers send no visitors. Google-Extended does not affect Google Search or AI Overviews.", ""))
+    star = group_for("*")
+    star_rules = {r for r in (star or {}).get("rules", []) if r[0] == "disallow" and r[1] not in ("", "/")}
+    leaky = [", ".join(g["agents"]) for g in groups if "*" not in g["agents"] and ("disallow", "/") not in g["rules"]
+             and star_rules and not star_rules <= set(g["rules"])]
+    checks.append(check("Technical", "Named bot groups repeat the shared Disallow rules", not leaky,
+                        "Missing in group: " + "; ".join(leaky) if leaky else "Every named group repeats the shared rules",
+                        "A bot obeys only its own User-agent group. Copy the Disallow lines from 'User-agent: *' into each named group, "
+                        "or those bots can crawl download handlers and search pages. A corrected file is in site-files/robots.txt.", warn=True))
     checks.append(check("GEO", "llms.txt file", llms_ok, "Found /llms.txt" if llms_ok else "No /llms.txt",
                         "Publish /llms.txt: a short Markdown summary of the site plus links to your best guides and resource categories. It helps AI assistants understand and cite you. A template is in the Playbook tab.",
                         warn=True))
+    if llms_ok:
+        guide_links = set(re.findall(r"designerslab\.io/(?!resource-category/)([a-z0-9-]{12,})/", llms))
+        checks.append(check("GEO", "llms.txt lists your guides", len(guide_links) >= 10,
+                            f"{len(guide_links)} article/guide links in /llms.txt",
+                            "List your best guides (sizes, file formats, font and colour guides) with one-line descriptions, not only categories. "
+                            "A ready file is in site-files/llms.txt; add each new article.", warn=True))
 
     # ---- homepage
     if "error" not in home:

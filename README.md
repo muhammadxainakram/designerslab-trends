@@ -56,3 +56,7 @@ python scripts/fetch_trends.py                 # writes docs/data/trends-{4,24,4
 cd scripts && python seasonal_planner.py && python site_audit.py   # planner.json, audit.json
 python -m http.server 8000 --directory docs
 ```
+
+## Files for designerslab.io
+
+`site-files/robots.txt` and `site-files/llms.txt` are ready-to-upload versions for the website (see the Playbook tab).

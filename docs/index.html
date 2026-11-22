@@ -193,24 +193,9 @@
 
       <details><summary>4. GEO: get cited by ChatGPT, Gemini, Perplexity and AI Overviews</summary>
         <ul>
-          <li><b>Allow AI crawlers.</b> If the audit shows GPTBot, ClaudeBot or Google-Extended blocked, remove those <code>Disallow: /</code> lines, or AI assistants can't use or cite your pages:
-<pre>User-agent: GPTBot
-Allow: /
-
-User-agent: OAI-SearchBot
-Allow: /
-
-User-agent: ClaudeBot
-Allow: /
-
-User-agent: PerplexityBot
-Allow: /
-
-User-agent: Google-Extended
-Allow: /
-
-Sitemap: https://designerslab.io/sitemap_index.xml</pre></li>
-          <li>Keep <b>/llms.txt</b> current. List your best guides and resource categories with a one-line description each.</li>
+          <li><b>Let AI <i>search</i> bots in, and decide on <i>training</i> bots.</b> Search and answer bots (OAI-SearchBot, ChatGPT-User, PerplexityBot, Claude-SearchBot) fetch pages to answer users and link back, so keep them allowed. Training crawlers (GPTBot, ClaudeBot, Google-Extended, CCBot) send no visitors, so blocking them is a fair choice for an ad-supported site. Google-Extended does <b>not</b> affect Google Search, AI Overviews or AI Mode.</li>
+          <li><b>Repeat the shared rules in every bot group.</b> A bot obeys only its own <code>User-agent</code> group, so copy the <code>Disallow</code> lines (download handler, search pages, /wp-admin/) into each named group. A ready-made file is in the repo at <a href="https://github.com/muhammadxainakram/designerslab-trends/blob/main/site-files/robots.txt" target="_blank" rel="noopener">site-files/robots.txt</a>.</li>
+          <li>Keep <b>/llms.txt</b> current. List your best guides, not just categories, each with a one-line description. Ready-made file: <a href="https://github.com/muhammadxainakram/designerslab-trends/blob/main/site-files/llms.txt" target="_blank" rel="noopener">site-files/llms.txt</a>. Add each new article to it.</li>
           <li>Write <b>clear, self-contained facts</b> that AI can quote, e.g. "The Netflix logo uses Netflix Sans, a custom typeface made by Dalton Maag in 2018."</li>
           <li>Add <b>original data</b>: "Most downloaded mockups this month", "Top 20 fonts searched in 2026" (use this tool's data). AI engines and journalists cite statistics.</li>
           <li>Show <b>author expertise</b> (bio, portfolio, Person schema) and keep <b>dateModified</b> current. Mention the brand the same way everywhere (Designers Lab / designerslab.io).</li>

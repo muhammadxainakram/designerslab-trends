@@ -1,0 +1,62 @@
+# robots.txt for https://designerslab.io
+#
+# Policy
+#   - Search engines and AI *search / answer* bots may crawl: they show your
+#     pages in results and link readers back to the site.
+#   - AI *training* crawlers are blocked: the site is ad-supported and they
+#     send no visitors.
+#
+# Important: a crawler obeys ONLY the most specific "User-agent" group that
+# names it and ignores the "*" group. So the shared Disallow rules are repeated
+# inside every named group below (in the old file, the AI search bots could
+# crawl download handlers and internal search pages).
+
+# ---------------------------------------------------------------------------
+# All other crawlers: Googlebot, Bingbot, Applebot, DuckDuckBot, ...
+# (Bing's index powers ChatGPT search and Copilot; Googlebot covers Google
+#  Search, AI Overviews and AI Mode.)
+# ---------------------------------------------------------------------------
+User-agent: *
+Disallow: /wp-admin/
+Allow: /wp-admin/admin-ajax.php
+Disallow: /*?*designerslab_download=
+Disallow: /?s=
+Disallow: /*?s=
+Disallow: /*&s=
+Disallow: /search/
+
+# ---------------------------------------------------------------------------
+# AI search & answer bots: ALLOWED (they cite and link to your pages)
+# Everything not listed below is allowed by default.
+# ---------------------------------------------------------------------------
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: Claude-SearchBot
+User-agent: Claude-User
+User-agent: DuckAssistBot
+User-agent: MistralAI-User
+Disallow: /wp-admin/
+Disallow: /*?*designerslab_download=
+Disallow: /?s=
+Disallow: /*?s=
+Disallow: /*&s=
+Disallow: /search/
+
+# ---------------------------------------------------------------------------
+# AI training crawlers: BLOCKED (no visitors in return)
+# Google-Extended does NOT affect Google Search, AI Overviews or AI Mode;
+# it only controls use in Gemini models and Gemini app answers. Delete that
+# line if you want Gemini app answers to be able to use your pages.
+# ---------------------------------------------------------------------------
+User-agent: GPTBot
+User-agent: ClaudeBot
+User-agent: Google-Extended
+User-agent: Applebot-Extended
+User-agent: CCBot
+User-agent: Meta-ExternalAgent
+User-agent: Bytespider
+Disallow: /
+
+Sitemap: https://designerslab.io/sitemap_index.xml

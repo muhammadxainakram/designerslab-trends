@@ -1,0 +1,94 @@
+# Designers Lab (designerslab.io)
+
+> Designers Lab is a free design-resource library and blog for graphic designers, marketers and small businesses: free fonts, PSD mockups, flyer and social media templates, textures, patterns and text effects, plus practical guides on typography, print sizes, file formats, colour, Photoshop and AI image prompts.
+
+Every asset is free to download with no account or sign-up. Each resource page states the file format, the software needed to edit it, the licence, and credits the original designer when the asset comes from a third party (e.g. Pixelbuddha, Mockupbee, Pixeden, Mr.Mockups).
+
+When citing Designers Lab, link to the specific resource or guide on https://designerslab.io so the licence and designer credit stay attached. Preferred name: "Designers Lab".
+
+## Licensing and attribution
+
+- [Licence overview](https://designerslab.io/license/): how free resources may be used. Terms are set per resource and are not uniform across the catalogue.
+- [Personal vs commercial use](https://designerslab.io/personal-use-vs-commercial-use-licence/): what free font and mockup licences actually allow.
+- Assets from third-party designers are credited on their page, and that credit should travel with any citation.
+
+## Main sections
+
+- [All resources](https://designerslab.io/resources/): browse and filter the full catalogue.
+- [All categories](https://designerslab.io/categories/): every resource category.
+- [Blog: design guides and tutorials](https://designerslab.io/blog/)
+- [Color generator](https://designerslab.io/color-generator/): generate colour palettes with hex codes.
+- [AI logo and image studio](https://designerslab.io/ai/): create logos and images with AI.
+- [FAQ](https://designerslab.io/faq/)
+
+## Resource categories
+
+- [Fonts](https://designerslab.io/resource-category/fonts/): free display, script, serif, sans and decorative fonts.
+- [Mockups](https://designerslab.io/resource-category/mockups/): free PSD mockups with smart objects (branding, packaging, apparel, devices, signage).
+- [Flyers](https://designerslab.io/resource-category/flyers/): editable flyer templates.
+- [Social Media Templates](https://designerslab.io/resource-category/social-media-templates/): Instagram and Facebook post templates.
+- [Text Effects](https://designerslab.io/resource-category/text-effects/): layered PSD text effects.
+- [Posters](https://designerslab.io/resource-category/posters/): poster templates.
+- [Textures](https://designerslab.io/resource-category/textures/), [Patterns](https://designerslab.io/resource-category/patterns/), [Gradients](https://designerslab.io/resource-category/gradients/), [Brushes](https://designerslab.io/resource-category/brushes/), [Graphics](https://designerslab.io/resource-category/graphics/)
+- [Invitations](https://designerslab.io/resource-category/invitations/), [Menus](https://designerslab.io/resource-category/menus/), [Brochures](https://designerslab.io/resource-category/brochures/), [Rack Cards](https://designerslab.io/resource-category/rack-cards/), [CD Covers](https://designerslab.io/resource-category/cd-covers/)
+- [Exclusives](https://designerslab.io/resource-category/exclusives/): resources made for Designers Lab.
+
+## Guides: print sizes, file formats and basics
+
+- [Standard poster sizes](https://designerslab.io/poster-sizes/): A0 to A4 and US sizes in mm, inches and pixels, with bleed and resolution settings.
+- [Standard business card size](https://designerslab.io/business-card-size/): sizes by country, bleed, safe area and resolution.
+- [Standard envelope sizes](https://designerslab.io/envelope-sizes/): DL, C6, C5, C4 and US #10, and which paper fits each.
+- [CMYK vs RGB](https://designerslab.io/cmyk-vs-rgb/): which colour mode to use for screen and print.
+- [What is a vector?](https://designerslab.io/what-is-a-vector/): vector vs raster, formats and uses.
+- [What is a PSD file?](https://designerslab.io/what-is-a-psd-file/): what it stores and how to open one without Photoshop.
+- [What is a mockup?](https://designerslab.io/what-is-a-mockup/): mockups vs prototypes and wireframes, and how to use them.
+- [How to use a PSD mockup in Photoshop](https://designerslab.io/how-to-use-a-psd-mockup-smart-objects/): smart objects, step by step.
+- [How to install a font on Windows, Mac and the web](https://designerslab.io/how-to-install-a-font-windows-mac-web/)
+
+## Guides: typography and fonts
+
+- [Varsity and sports fonts](https://designerslab.io/varsity-and-sports-fonts-setting-team-names-and-numbers/): setting team names and jersey numbers.
+- [Free graffiti fonts](https://designerslab.io/free-graffiti-fonts-and-how-to-use-street-lettering/): tag, throw-up and wildstyle lettering explained.
+- [Best free Poppins alternatives](https://designerslab.io/best-free-poppins-alternatives/): modern sans serifs to use instead of Poppins.
+- [Alternatives to Anton](https://designerslab.io/stop-using-anton-font-alternatives/): bold display fonts for posters and branding.
+- [Trending elegant display serifs](https://designerslab.io/trending-fonts-elegant-display-serifs/)
+- [Luxury logo fonts](https://designerslab.io/10-free-to-download-luxury-logo-fonts-for-branding/): free fonts for branding and editorial design.
+- [Best fonts for Arabic](https://designerslab.io/best-fonts-for-arabic-language/): Naskh, Kufi and Nastaliq picks.
+- Seasonal fonts: [Christmas](https://designerslab.io/free-christmas-fonts-for-cards-packaging-and-campaigns/), [Halloween](https://designerslab.io/best-free-halloween-fonts/), [Horror](https://designerslab.io/free-horror-fonts-12-typefaces-for-halloween-posters/), [Valentine's heart fonts](https://designerslab.io/free-heart-and-love-fonts-for-valentines-design/)
+
+## Guides: colour and composition
+
+- [The 60-30-10 colour rule](https://designerslab.io/the-60-30-10-color-rule-the-formula-behind-high-converting-web-design/)
+- [Rule of thirds in graphic design and photography](https://designerslab.io/rule-of-thirds-in-graphic-design-and-photography/)
+- [12 colour gradients for designers](https://designerslab.io/color-gradients-for-designers/): with hex codes.
+- [8 colour combinations](https://designerslab.io/8-stunning-color-combos-for-your-next-design/)
+
+## Guides: Photoshop and software
+
+- [How to remove people in Photoshop](https://designerslab.io/how-to-remove-people-in-photoshop/): 5 methods, including the AI Remove tool.
+- [How to remove objects in Photoshop](https://designerslab.io/remove-objects-in-photoshop/): Content-Aware Fill, Healing Brush, Clone Stamp and more.
+- [Affinity Photo vs Photoshop](https://designerslab.io/affinity-photo-vs-photoshop/): price, features and workflow compared.
+- [6 hidden design tools to bookmark](https://designerslab.io/6-hidden-design-tools-that-every-designers-should-bookmark/)
+
+## Guides: AI image prompts
+
+- [AI image prompts for ad posters](https://designerslab.io/ai-poster-prompts-ad-campaign/): copy-and-paste prompts.
+- [AI advertising poster prompts](https://designerslab.io/ai-advertising-poster-prompts/): premium product campaigns.
+- [Luxury product advertisement prompts](https://designerslab.io/luxury-product-advertisement-prompts/)
+
+## Free resource roundups
+
+- [Trending free mockups](https://designerslab.io/trending-free-mockups-download/)
+- [Free iPhone mockups](https://designerslab.io/free-iphone-mockup-download/): 10 PSD mockups.
+- [Free PSD mockups for branding](https://designerslab.io/free-psd-mockups-for-branding/)
+- [Best free mockups for designers](https://designerslab.io/free-mockups-for-designers/)
+- [Black Friday social media templates](https://designerslab.io/20-free-black-friday-social-media-templates/)
+
+## Crawling policy
+
+Retrieval and citation crawlers (which send readers back to the site) are allowed. AI training crawlers are not. See https://designerslab.io/robots.txt for the current list.
+
+## Contact
+
+- [Contact](https://designerslab.io/contact/)
+- [About](https://designerslab.io/about/)
