@@ -5,68 +5,34 @@
     "sitemaps": ["https://designerslab.io/post-sitemap.xml"]
   },
 
-  "google_trends_geos": ["US", "GB", "CA", "AU", "IN", "PK"],
+  "countries": ["US", "GB", "CA", "AU", "IN", "PK", "NZ", "IE", "ZA", "PH", "AE", "SG"],
 
-  "suggest_seeds": [
-    "free fonts", "font for", "fonts like", "what font is", "font similar to",
-    "free mockup", "mockup psd", "free psd", "mockup template",
-    "logo design", "logo font", "new logo",
-    "canva template", "photoshop how to", "how to photoshop", "illustrator how to",
-    "free templates", "flyer template", "poster template", "social media template",
-    "ai image prompt", "midjourney prompt", "ai logo generator", "chatgpt image prompt",
-    "color palette", "color of the year", "graphic design trends",
-    "best fonts for", "free graphics", "free textures", "free brushes"
-  ],
-  "suggest_modifiers": ["", " {year}", " {next_year}", " free", " for"],
-  "suggest_modifiers_live": ["", " {year}", " for"],
+  "design_terms": {
+    "Fonts": ["font", "fonts", "typeface", "typefaces", "typography", "lettering", "calligraphy"],
+    "Logo & branding": ["logo", "logos", "new logo", "rebrand", "rebranding", "brand identity", "wordmark", "logo design"],
+    "Design resources": ["mockup", "mockups", "template", "templates", "psd", "svg", "clipart", "clip art",
+                          "vector", "vectors", "wallpaper", "wallpapers", "sticker", "stickers", "coloring page",
+                          "coloring pages", "colouring pages", "printable", "printables", "png"],
+    "Design tools": ["canva", "photoshop", "adobe", "illustrator", "indesign", "lightroom", "firefly", "figma",
+                      "procreate", "affinity designer", "affinity photo", "coreldraw", "gimp", "inkscape"],
+    "AI images": ["midjourney", "dall-e", "dalle", "ai image", "ai images", "image generator", "ai art",
+                   "nano banana", "chatgpt image", "gemini image", "ai photo", "ai logo", "ai wallpaper",
+                   "ideogram", "leonardo ai", "stable diffusion"],
+    "Graphic design": ["graphic design", "graphic designer", "poster design", "web design", "ui design",
+                        "ux design", "t-shirt design", "shirt design", "flyer design", "card design",
+                        "design ideas", "poster", "posters", "flyer", "flyers", "infographic", "thumbnail",
+                        "illustration", "illustrations", "pantone", "color of the year", "colour of the year",
+                        "color palette", "google doodle", "doodle"]
+  },
 
   "news_queries": [
-    "graphic design", "font OR typeface", "new logo OR rebrand", "Adobe Photoshop",
-    "Adobe Illustrator", "Canva", "Figma", "AI image generator", "Midjourney",
-    "Pantone color of the year", "poster design", "packaging design", "branding agency"
+    "graphic design", "font OR typeface", "new logo OR rebrand", "Adobe Photoshop OR Illustrator",
+    "Canva", "Figma", "AI image generator", "Midjourney", "Pantone color of the year", "poster design",
+    "Google Doodle"
   ],
 
   "subreddits": [
     "graphic_design", "typography", "identifythisfont", "logodesign", "photoshop",
     "Design", "canva", "AdobeIllustrator", "midjourney", "web_design", "branding"
-  ],
-
-  "niche_terms": {
-    "3": ["font", "fonts", "typeface", "typography", "lettering", "mockup", "mockups", "psd",
-          "photoshop", "illustrator", "canva", "figma", "logo", "rebrand", "rebranding",
-          "branding", "graphic design", "designer", "template", "templates", "poster", "flyer",
-          "vector", "svg", "color palette", "pantone", "color of the year", "adobe", "affinity",
-          "midjourney", "ai image", "ai art", "image generator", "prompt", "prompts",
-          "wallpaper", "icon", "icons", "illustration", "texture", "brush", "gradient",
-          "ui design", "web design", "packaging", "brand identity", "clipart", "sticker"],
-    "2": ["christmas", "halloween", "thanksgiving", "black friday", "cyber monday", "valentine",
-          "easter", "new year", "diwali", "eid", "ramadan", "mother's day", "father's day",
-          "st patrick", "independence day", "4th of july", "back to school", "graduation",
-          "wedding", "birthday", "iphone", "ipad", "macbook", "imac", "apple watch",
-          "galaxy", "pixel", "trailer", "album", "cover art", "movie poster", "design",
-          "creative", "artwork", "art", "photo", "aesthetic", "theme", "invitation", "card"],
-    "1": ["brand", "launch", "ad", "campaign", "commercial", "super bowl", "netflix",
-          "season", "movie", "film", "game", "release", "event", "festival", "sale", "deal"]
-  },
-
-  "holidays": [
-    {"name": "Thanksgiving", "month": 11, "day": 26},
-    {"name": "Black Friday", "month": 11, "day": 27},
-    {"name": "Cyber Monday", "month": 11, "day": 30},
-    {"name": "Christmas", "month": 12, "day": 25},
-    {"name": "New Year", "month": 1, "day": 1},
-    {"name": "Valentine's Day", "month": 2, "day": 14},
-    {"name": "Ramadan", "month": 2, "day": 18},
-    {"name": "Eid", "month": 3, "day": 20},
-    {"name": "St Patrick's Day", "month": 3, "day": 17},
-    {"name": "Easter", "month": 4, "day": 5},
-    {"name": "Mother's Day", "month": 5, "day": 10},
-    {"name": "Graduation", "month": 5, "day": 25},
-    {"name": "Father's Day", "month": 6, "day": 21},
-    {"name": "4th of July", "month": 7, "day": 4},
-    {"name": "Back to School", "month": 8, "day": 15},
-    {"name": "Halloween", "month": 10, "day": 31},
-    {"name": "Diwali", "month": 11, "day": 8}
-  ],
-  "holiday_lookahead_days": 45
+  ]
 }

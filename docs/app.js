@@ -1,324 +1,278 @@
 (() => {
   "use strict";
 
-  const DATA_URL = "data/trends.json";
-  const API_URL = "/api/trends";
-  const PAGE = 40;
-  const SRC_LABEL = {
-    google_trends: "Google Trends",
-    google_suggest: "Google Search",
-    google_news: "Google News",
-    reddit: "Reddit",
-  };
-  const CAT_LABEL = {
-    fonts: "Fonts", seasonal: "Seasonal", device: "Device mockup", "design-tool": "Design tool",
-    "logo-brand": "Logo / brand", resources: "Resources", "ai-prompts": "AI prompts",
-    sports: "Sports", entertainment: "Entertainment", general: "General",
-  };
-  const GEO_LABEL = { US: "🇺🇸 US", GB: "🇬🇧 UK", CA: "🇨🇦 CA", AU: "🇦🇺 AU", IN: "🇮🇳 IN", PK: "🇵🇰 PK" };
+  const COUNTRY = { US: "🇺🇸 US", GB: "🇬🇧 UK", CA: "🇨🇦 Canada", AU: "🇦🇺 Australia", IN: "🇮🇳 India", PK: "🇵🇰 Pakistan",
+    NZ: "🇳🇿 New Zealand", IE: "🇮🇪 Ireland", ZA: "🇿🇦 South Africa", PH: "🇵🇭 Philippines", AE: "🇦🇪 UAE", SG: "🇸🇬 Singapore" };
+  const WIN_LABEL = { 2: "in the past 2 hours", 4: "in the past 4 hours", 24: "in the past 24 hours", 48: "in the past 48 hours", 168: "in the past 7 days" };
 
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-  // ---------- per-viewer state (localStorage is optional) ----------
   const store = {
-    get(k, d) { try { const v = localStorage.getItem("dltf:" + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
-    set(k, v) { try { localStorage.setItem("dltf:" + k, JSON.stringify(v)); } catch { /* ignore */ } },
+    get(k, d) { try { const v = localStorage.getItem("dltf2:" + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+    set(k, v) { try { localStorage.setItem("dltf2:" + k, JSON.stringify(v)); } catch { /* optional */ } },
   };
-  let done = new Set(store.get("done", []));
-  const state = Object.assign({
-    tab: "top", win: 0, q: "", geo: "", cat: "", sort: "score",
-    nicheOnly: true, activeOnly: false, hideCovered: true, newOnly: false,
-  }, store.get("filters", {}));
-  state.q = "";
-  let data = null;
-  let shown = PAGE;
+  const state = Object.assign({ win: 4, minSearches: 1000, country: "", activeOnly: false, showOther: false, sort: "searches" },
+    store.get("state", {}));
+  const cache = {};       // hours -> payload
+  const open = new Set(); // expanded row ids
 
-  // ---------- helpers ----------
+  // ---------- formatting ----------
   const now = () => Date.now();
-  const hoursAgo = (iso) => iso ? Math.max(0, (now() - Date.parse(iso)) / 36e5) : null;
+  const hoursAgo = (iso) => (iso ? (now() - Date.parse(iso)) / 36e5 : null);
   function dur(h) {
     if (h == null) return "";
     if (h < 1) return `${Math.max(1, Math.round(h * 60))}m`;
     if (h < 48) { const H = Math.floor(h), M = Math.round((h - H) * 60); return M && H < 10 ? `${H}h ${M}m` : `${H}h`; }
     return `${Math.round(h / 24)}d`;
   }
-  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  function vol(n) {
+    if (!n) return "–";
+    if (n >= 1e6) return `${n / 1e6}M+`;
+    if (n >= 1e3) return `${n / 1e3}K+`;
+    return `${n}+`;
+  }
+  const pct = (p) => (p == null ? "–" : `+${Number(p).toLocaleString()}%`);
+  const exact = (iso) => (iso ? new Date(iso).toLocaleString() : "");
+  const fetchHours = () => (state.win === 2 ? 4 : state.win);
   function toast(msg) {
     const t = $("#toast"); t.textContent = msg; t.classList.add("show");
     clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 1600);
   }
   async function copy(text) {
-    try { await navigator.clipboard.writeText(text); toast("Copied"); }
-    catch { const ta = document.createElement("textarea"); ta.value = text; document.body.append(ta); ta.select(); document.execCommand("copy"); ta.remove(); toast("Copied"); }
-  }
-
-  // Live age: Google Trends items keep running while active.
-  function liveDuration(it) {
-    if (it.source === "google_trends") {
-      const start = Date.parse(it.started_at);
-      const end = it.active ? now() : Date.parse(it.last_seen);
-      return Math.max(0, (end - start) / 36e5);
+    try { await navigator.clipboard.writeText(text); } catch {
+      const ta = document.createElement("textarea"); ta.value = text; document.body.append(ta); ta.select(); document.execCommand("copy"); ta.remove();
     }
-    return hoursAgo(it.started_at);
+    toast("Copied");
+  }
+  function highlight(text, term) {
+    const i = text.toLowerCase().indexOf(String(term).toLowerCase());
+    if (i < 0) return esc(text);
+    return esc(text.slice(0, i)) + "<mark>" + esc(text.slice(i, i + term.length)) + "</mark>" + esc(text.slice(i + term.length));
   }
 
   // ---------- filtering ----------
-  function filtered() {
-    if (!data) return [];
-    const q = state.q.trim().toLowerCase();
-    let items = data.items;
-
-    if (state.tab === "done") items = items.filter((i) => done.has(i.id));
-    else if (state.tab !== "top") items = items.filter((i) => i.source === state.tab);
-
-    items = items.filter((it) => {
-      if (state.tab !== "done" && done.has(it.id)) return false;
-      if (state.win && (hoursAgo(it.started_at) ?? 999) > state.win) return false;
-      if (state.geo && it.source === "google_trends" && it.geo !== state.geo) return false;
-      if (state.geo && state.tab === "google_trends" && it.geo !== state.geo) return false;
-      if (state.cat && it.category !== state.cat) return false;
-      if (state.nicheOnly && it.relevance < 30) return false;
-      if (state.activeOnly && !it.active) return false;
-      if (state.hideCovered && it.covered && state.tab !== "done") return false;
-      if (state.newOnly && it.source === "google_suggest" && !it.is_new) return false;
-      if (state.newOnly && state.tab === "google_suggest" && !it.is_new) return false;
-      if (q && !(it.keyword.toLowerCase().includes(q) || (it.ideas || []).some((x) => x.toLowerCase().includes(q)))) return false;
-      return true;
-    });
-
-    const sorters = {
-      score: (a, b) => b.score - a.score || (hoursAgo(a.started_at) - hoursAgo(b.started_at)),
-      fresh: (a, b) => (hoursAgo(a.started_at) ?? 999) - (hoursAgo(b.started_at) ?? 999),
-      long: (a, b) => liveDuration(b) - liveDuration(a),
-      traffic: (a, b) => (b.traffic || b.upvotes || 0) - (a.traffic || a.upvotes || 0) || b.score - a.score,
-    };
-    items = [...items].sort(sorters[state.sort] || sorters.score);
-
-    // Top picks: keep the mix diverse so autocomplete doesn't drown the rest.
-    // Round-robin through sources (each already sorted by score), max 25 per source.
-    if (state.tab === "top" && state.sort === "score") {
-      const order = ["google_trends", "google_suggest", "google_news", "reddit"];
-      const buckets = Object.fromEntries(order.map((s) => [s, items.filter((i) => i.source === s).slice(0, 25)]));
-      const mixed = [];
-      while (order.some((s) => buckets[s].length)) {
-        const round = order.map((s) => buckets[s].shift()).filter(Boolean).sort((a, b) => b.score - a.score);
-        mixed.push(...round);
-      }
-      items = mixed;
-    }
-    return items;
+  function inWindow(iso) {
+    if (state.win !== 2) return true; // Google already limited the list to its own window
+    return (hoursAgo(iso) ?? 999) <= 2;
   }
+  function trendFilter(t, ignoreMin) {
+    if (!ignoreMin && t.searches < state.minSearches) return false;
+    if (state.country && t.country !== state.country) return false;
+    if (state.activeOnly && !t.active) return false;
+    return inWindow(t.started_at);
+  }
+  const sorters = {
+    searches: (a, b) => b.searches - a.searches || (b.increase_pct || 0) - (a.increase_pct || 0),
+    increase: (a, b) => (b.increase_pct || 0) - (a.increase_pct || 0) || b.searches - a.searches,
+    started: (a, b) => Date.parse(b.started_at) - Date.parse(a.started_at),
+  };
 
   // ---------- rendering ----------
-  function metaHTML(it) {
-    const b = [];
-    b.push(`<span class="badge src-${it.source}">${SRC_LABEL[it.source]}</span>`);
-    const h = liveDuration(it);
-    if (it.source === "google_trends") {
-      if (it.geo) b.push(`<span>${GEO_LABEL[it.geo] || it.geo}</span>`);
-      if (it.active) {
-        b.push(`<span class="badge ${h <= 4 ? "hot" : ""}">🔥 Trending for ${dur(h)}</span>`);
-      } else {
-        b.push(`<span class="badge ended">Trended ${dur(h)}</span><span>ended ${dur(hoursAgo(it.last_seen))} ago</span>`);
-      }
-      if (it.traffic_label) b.push(`<span>${esc(it.traffic_label)} searches</span>`);
-    } else if (it.source === "google_suggest") {
-      if (it.is_new) b.push(`<span class="badge new">New · ${dur(h)} ago</span>`);
-      else if (data.mode !== "live") b.push(`<span>In Google suggestions for ${dur(h)}</span>`);
-      b.push(`<span>#${it.rank} for “${esc(it.seed)}”</span>`);
-    } else if (it.source === "google_news") {
-      b.push(`<span class="${h <= 4 ? "badge hot" : ""}">${dur(h)} ago</span>`);
-      if (it.publisher) b.push(`<span>${esc(it.publisher)}</span>`);
-    } else if (it.source === "reddit") {
-      b.push(`<span>r/${esc(it.subreddit)}</span>`);
-      b.push(`<span class="${h <= 4 ? "badge hot" : ""}">${dur(h)} ago</span>`);
-      if (it.upvotes != null) b.push(`<span>▲ ${it.upvotes} · 💬 ${it.comments}</span>`);
-      if (it.is_question) b.push(`<span class="badge new">Question</span>`);
-    }
-    if (it.category && it.category !== "general") b.push(`<span class="badge">${CAT_LABEL[it.category] || it.category}</span>`);
-    if (it.covered) b.push(`<span class="badge covered">Covered</span>`);
-    return b.join("");
+  function trendRows(list, withMatch) {
+    const head = `<thead><tr>
+      <th>Trend</th>
+      <th class="num sortable ${state.sort === "searches" ? "sorted" : ""}" data-sort="searches">Searches ${state.sort === "searches" ? "↓" : ""}</th>
+      <th class="num sortable ${state.sort === "increase" ? "sorted" : ""}" data-sort="increase">Increase ${state.sort === "increase" ? "↓" : ""}</th>
+      <th class="sortable ${state.sort === "started" ? "sorted" : ""}" data-sort="started">Started ${state.sort === "started" ? "↓" : ""}</th>
+      <th>Status</th><th>Country</th>
+      ${withMatch ? "<th>Why it matched</th><th>On your site</th>" : "<th>Google category</th>"}
+    </tr></thead>`;
+    const cols = withMatch ? 8 : 7;
+    const body = list.map((t) => {
+      const age = hoursAgo(t.started_at);
+      const status = t.active
+        ? `<span class="pill active">● Active</span>`
+        : `<span class="pill">Ended</span><div class="muted">lasted ${dur((Date.parse(t.ended_at) - Date.parse(t.started_at)) / 36e5)}</div>`;
+      const m = t.design;
+      const why = m ? `<span class="pill match">${esc(m.group)}</span>
+          <div class="muted">${m.in === "title" ? "in the trend" : "Google related query"}: “${highlight(m.query, m.term)}”${m.match_count > 1 ? ` · ${m.match_count} matching queries` : ""}</div>` : "";
+      const site = t.covered ? `<a class="pill covered" href="${esc(t.covered)}" target="_blank" rel="noopener">Covered ↗</a>` : `<span class="muted">Not yet</span>`;
+      const row = `<tr class="main-row" data-id="${esc(t.id)}">
+        <td><div class="kw">${esc(t.keyword)}</div><div class="muted">${t.related_count} related queries · click for details</div></td>
+        <td class="num"><b>${vol(t.searches)}</b></td>
+        <td class="num up">${pct(t.increase_pct)}</td>
+        <td class="nowrap" title="${esc(exact(t.started_at))}"><span class="pill ${age <= 2 ? "hot" : ""}">${dur(age)} ago</span></td>
+        <td>${status}</td>
+        <td class="nowrap">${COUNTRY[t.country] || t.country}</td>
+        ${withMatch ? `<td>${why}</td><td>${site}</td>` : `<td class="muted">${esc(t.google_categories.join(", ") || "–")}</td>`}
+      </tr>`;
+      return row + (open.has(t.id) ? detailRow(t, cols) : "");
+    }).join("");
+    return head + `<tbody>${body}</tbody>`;
   }
 
-  function bodyHTML(it) {
-    const q = encodeURIComponent(it.keyword);
-    const parts = [];
-    if (it.ideas?.length) {
-      parts.push(`<div><h4>Article ideas</h4><ul class="ideas">${it.ideas.map((x) =>
-        `<li><span>${esc(x)}</span><button class="copy" data-copy="${esc(x)}">Copy</button></li>`).join("")}</ul></div>`);
-    }
-    if (it.news?.length) {
-      parts.push(`<div><h4>Why it's trending</h4><ul class="news">${it.news.map((n) =>
-        `<li><a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.title)}</a> <span class="kv">· ${esc(n.source)}</span></li>`).join("")}</ul></div>`);
-    }
-    if (it.covered) {
-      parts.push(`<div class="kv">Already on your site: <a href="${esc(it.covered.url)}" target="_blank" rel="noopener">${esc(it.covered.url.replace(/^https?:\/\//, ""))}</a>. Refresh that post with the new angle.</div>`);
-    }
-    if (it.niche_hits?.length) parts.push(`<div class="kv">Niche match: ${it.niche_hits.map(esc).join(", ")} · relevance ${it.relevance}/100</div>`);
-
-    const acts = [];
-    if (it.source === "google_news" || it.source === "reddit") acts.push(`<a class="btn primary" href="${esc(it.url)}" target="_blank" rel="noopener">Open ${it.source === "reddit" ? "post" : "article"}</a>`);
-    acts.push(`<a class="btn ${acts.length ? "" : "primary"}" href="https://www.google.com/search?q=${q}" target="_blank" rel="noopener">Google results</a>`);
-    acts.push(`<a class="btn" href="${esc(it.trends_url || `https://trends.google.com/trends/explore?date=now%207-d&q=${q}`)}" target="_blank" rel="noopener">Google Trends</a>`);
-    acts.push(`<a class="btn" href="https://www.google.com/search?q=site%3Adesignerslab.io+${q}" target="_blank" rel="noopener">Check my site</a>`);
-    acts.push(`<button class="btn" data-brief="1">Copy brief</button>`);
-    acts.push(`<button class="btn" data-done="1">${done.has(it.id) ? "Undo written" : "✓ Mark written"}</button>`);
-    parts.push(`<div class="actions">${acts.join("")}</div>`);
-    return parts.join("");
+  function detailRow(t, cols) {
+    const hits = new Set((t.design?.matching_queries || []).map((q) => q.toLowerCase()));
+    const q = encodeURIComponent(t.keyword);
+    const date = state.win <= 4 ? "now%204-H" : state.win <= 24 ? "now%201-d" : "now%207-d";
+    const chips = t.related_queries.map((r) => `<span class="chip ${hits.has(r.toLowerCase()) ? "hit" : ""}" data-copy="${esc(r)}" title="Click to copy">${esc(r)}</span>`).join("");
+    return `<tr class="detail"><td colspan="${cols}"><div class="detail-inner">
+      <div><h4>What people searched (Google's related queries)</h4><div class="chips">${chips || '<span class="muted">Google listed no related queries.</span>'}</div>
+        ${t.related_count > t.related_queries.length ? `<div class="muted">+ ${t.related_count - t.related_queries.length} more on Google Trends</div>` : ""}</div>
+      <div class="muted">Google category: ${esc(t.google_categories.join(", ") || "–")} · Started ${esc(exact(t.started_at))}${t.ended_at ? ` · Ended ${esc(exact(t.ended_at))}` : ""}</div>
+      <div class="actions">
+        <a class="btn" href="https://trends.google.com/trends/explore?date=${date}&geo=${t.country}&q=${q}" target="_blank" rel="noopener">Google Trends chart</a>
+        <a class="btn" href="https://www.google.com/search?q=${q}" target="_blank" rel="noopener">Google results</a>
+        <a class="btn" href="https://news.google.com/search?q=${q}%20when%3A1d&hl=en-US&gl=US&ceid=US%3Aen" target="_blank" rel="noopener">Google News</a>
+        <a class="btn" href="https://www.google.com/search?q=site%3Adesignerslab.io+${q}" target="_blank" rel="noopener">Search my site</a>
+        <button class="btn" data-copy="${esc(t.keyword)}">Copy keyword</button>
+      </div></div></td></tr>`;
   }
 
-  function brief(it) {
-    const lines = [`Keyword: ${it.keyword}`, `Source: ${SRC_LABEL[it.source]}${it.geo ? " (" + it.geo + ")" : ""}`,
-      `Opportunity score: ${it.score}/100 · relevance ${it.relevance}/100`];
-    const h = liveDuration(it);
-    if (h != null) lines.push(`${it.source === "google_trends" ? "Trending for" : "Age"}: ${dur(h)}`);
-    if (it.traffic_label) lines.push(`Search volume: ${it.traffic_label}`);
-    if (it.ideas?.length) lines.push("", "Title ideas:", ...it.ideas.map((x) => "- " + x));
-    if (it.news?.length) lines.push("", "Context:", ...it.news.map((n) => `- ${n.title} (${n.url})`));
-    if (it.url) lines.push("", `Link: ${it.url}`);
-    return lines.join("\n");
+  function newsRows(list) {
+    if (!list.length) return "";
+    return `<thead><tr><th>Headline</th><th>Publisher</th><th>Published</th><th>Matched term</th><th>On your site</th></tr></thead><tbody>` +
+      list.map((n) => {
+        const age = hoursAgo(n.published_at);
+        return `<tr>
+          <td><a class="kw" href="${esc(n.url)}" target="_blank" rel="noopener">${highlight(n.headline, n.design.term)}</a></td>
+          <td class="muted">${esc(n.publisher)}</td>
+          <td class="nowrap" title="${esc(exact(n.published_at))}"><span class="pill ${age <= 2 ? "hot" : ""}">${dur(age)} ago</span></td>
+          <td><span class="pill match">${esc(n.design.group)}</span></td>
+          <td>${n.covered ? `<a class="pill covered" href="${esc(n.covered)}" target="_blank" rel="noopener">Covered ↗</a>` : '<span class="muted">Not yet</span>'}</td>
+        </tr>`;
+      }).join("") + "</tbody>";
+  }
+
+  function redditRows(list) {
+    if (!list.length) return "";
+    return `<thead><tr><th>Post</th><th>Subreddit</th><th class="num">Upvotes</th><th class="num">Comments</th><th class="num">Upvotes / hour</th><th>Posted</th></tr></thead><tbody>` +
+      list.map((p) => `<tr>
+        <td><a class="kw" href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.title)}</a></td>
+        <td class="muted nowrap">r/${esc(p.subreddit)}</td>
+        <td class="num">${p.upvotes ?? "–"}</td><td class="num">${p.comments ?? "–"}</td><td class="num">${p.upvotes_per_hour ?? "–"}</td>
+        <td class="nowrap" title="${esc(exact(p.posted_at))}">${dur(hoursAgo(p.posted_at))} ago</td>
+      </tr>`).join("") + "</tbody>";
   }
 
   function render() {
-    const items = filtered();
-    const list = $("#list");
-    list.innerHTML = "";
-    const tpl = $("#rowTpl");
-    items.slice(0, shown).forEach((it) => {
-      const node = tpl.content.firstElementChild.cloneNode(true);
-      node.dataset.id = it.id;
-      if (done.has(it.id)) node.classList.add("done");
-      const sc = $(".score", node);
-      sc.textContent = it.score;
-      sc.classList.add(it.score >= 65 ? "s-high" : it.score >= 45 ? "s-mid" : "s-low");
-      sc.title = "Opportunity score (0-100)";
-      $(".kw", node).textContent = it.keyword;
-      $(".meta", node).innerHTML = metaHTML(it);
-      list.append(node);
-    });
-    if (!items.length) {
-      list.innerHTML = `<div class="empty">${data ? "Nothing matches these filters. Try a wider time window or turn off “Design niche only”." : "Loading trends…"}</div>`;
-    }
-    $("#count").textContent = data ? `${items.length} ${items.length === 1 ? "result" : "results"}${state.win ? ` that started in the last ${state.win}h` : ""}` : "";
-    $("#more").hidden = items.length <= shown;
-    renderTabs();
-  }
-
-  function renderTabs() {
-    if (!data) return;
-    $$("#tabs button").forEach((b) => {
-      b.classList.toggle("active", b.dataset.tab === state.tab);
-      const t = b.dataset.tab;
-      let n = t === "top" ? null : t === "done" ? done.size : data.counts?.[t];
-      b.innerHTML = b.textContent.replace(/\s*\d+$/, "") + (n != null ? `<span class="cnt">${n}</span>` : "");
-    });
-  }
-
-  function renderStats() {
-    const it = data.items;
-    const fresh2 = it.filter((i) => i.source === "google_trends" && i.active && liveDuration(i) <= 2).length;
-    const fresh4 = it.filter((i) => i.source === "google_trends" && i.active && liveDuration(i) <= 4).length;
-    const newS = it.filter((i) => i.is_new).length;
-    const good = it.filter((i) => i.score >= 75 && !i.covered && !done.has(i.id)).length;
-    const S = [
-      { n: good, l: "Strong opportunities (75+)", act: { tab: "top", win: 0 } },
-      { n: fresh2, l: "Google trends < 2h old", hot: true, act: { tab: "google_trends", win: 2, nicheOnly: false, activeOnly: true } },
-      { n: fresh4, l: "Google trends < 4h old", act: { tab: "google_trends", win: 4, nicheOnly: false, activeOnly: true } },
-      { n: newS, l: "New Google suggestions", act: { tab: "google_suggest", win: 0, newOnly: true } },
-    ];
-    $("#stats").innerHTML = S.map((s, i) => `<button class="stat ${s.hot ? "hot" : ""}" data-i="${i}"><div class="n">${s.n}</div><div class="l">${s.l}</div></button>`).join("");
-    $$("#stats .stat").forEach((el) => el.addEventListener("click", () => { Object.assign(state, S[+el.dataset.i].act); syncControls(); persist(); shown = PAGE; render(); }));
-  }
-
-  function renderHeader() {
-    const h = hoursAgo(data.generated_at);
-    $("#updatedText").textContent = `Updated ${dur(h)} ago`;
-    $("#updatedText").title = new Date(data.generated_at).toLocaleString();
-    $("#liveDot").className = "dot " + (h < 1.5 ? "live" : "stale");
-    const st = data.status || {};
-    const bad = Object.entries(st).filter(([k, v]) => k !== "site" && v && v.ok === false).map(([k]) => SRC_LABEL[k] || k);
-    if (bad.length) $("#updatedText").textContent += ` · ${bad.join(", ")} unavailable`;
-  }
-
-  function fillSelects() {
-    const geos = [...new Set(data.items.filter((i) => i.geo).map((i) => i.geo))].sort();
-    $("#geo").innerHTML = `<option value="">All countries</option>` + geos.map((g) => `<option value="${g}">${GEO_LABEL[g] || g}</option>`).join("");
-    const cats = [...new Set(data.items.map((i) => i.category))].sort();
-    $("#cat").innerHTML = `<option value="">All categories</option>` + cats.map((c) => `<option value="${c}">${CAT_LABEL[c] || c}</option>`).join("");
+    const data = cache[fetchHours()];
     syncControls();
+    if (!data) return;
+    const wl = WIN_LABEL[state.win];
+    const nCountries = Object.keys(data.scanned.by_country).length;
+
+    const allDesign = data.google_trends.filter((t) => trendFilter(t, true));
+    const design = allDesign.filter((t) => t.searches >= state.minSearches).sort(sorters[state.sort]);
+    const news = data.google_news.filter((n) => inWindow(n.published_at));
+    const rd = data.reddit.filter((p) => inWindow(p.posted_at));
+    const rdStatus = data.status.reddit || {};
+
+    // summary
+    const scannedCount = state.country ? (data.scanned.by_country[state.country] || 0) : data.scanned.total;
+    $("#summary").innerHTML = [
+      { n: scannedCount.toLocaleString(), l: `Google trends checked ${wl} (${state.country ? COUNTRY[state.country] : nCountries + " countries"})` },
+      { n: design.length, l: `Design-related with ${state.minSearches ? vol(state.minSearches) : "any"} searches`, cls: design.length ? "good" : "zero" },
+      { n: news.length, l: `Design news stories ${wl}`, cls: news.length ? "good" : "zero" },
+      { n: rdStatus.needs_keys && !rd.length ? "—" : rd.length, l: rdStatus.needs_keys && !rd.length ? "Reddit posts (needs API keys)" : `Reddit posts ${wl}`, cls: rd.length ? "good" : "zero" },
+    ].map((s) => `<div class="stat ${s.cls || ""}"><div class="n">${s.n}</div><div class="l">${s.l}</div></div>`).join("");
+
+    // google trends (design)
+    $("#gtTable").innerHTML = design.length ? trendRows(design, true) : "";
+    const lower = allDesign.length - design.length;
+    $("#gtEmpty").innerHTML = design.length ? "" : `<div class="empty">
+      <b>No design-related search is trending on Google with ${vol(state.minSearches)} searches ${wl}.</b><br>
+      Google listed ${scannedCount.toLocaleString()} trending searches in this window. None of them, or their related queries, mention fonts, logos, mockups, templates, Canva, Photoshop, AI images or other design terms at this volume.
+      Design keywords rarely reach Google's trending list, so an empty table is a real result, not an error.
+      ${lower > 0 ? `<br><br>There ${lower === 1 ? "is" : "are"} <b>${lower}</b> design-related trend${lower === 1 ? "" : "s"} with fewer searches.` : ""}
+      <div class="actions">
+        ${lower > 0 ? '<button class="btn" data-set=\'{"minSearches":0}\'>Show lower-volume design trends</button>' : ""}
+        ${state.win < 168 ? '<button class="btn" data-set=\'{"win":168}\'>Check past 7 days</button>' : ""}
+      </div></div>`;
+
+    // other trends
+    $("#otherBlock").hidden = !state.showOther;
+    if (state.showOther) {
+      const other = data.google_trends_other.filter((t) => trendFilter(t)).sort(sorters[state.sort]).slice(0, 100);
+      $("#otherTable").innerHTML = other.length ? trendRows(other, false) : "";
+    }
+
+    // news
+    $("#newsTable").innerHTML = newsRows(news);
+    $("#newsEmpty").innerHTML = news.length ? "" : `<div class="empty">No design news published ${wl} in the Google News searches this tool runs.</div>`;
+
+    // reddit
+    $("#redditTable").innerHTML = redditRows(rd);
+    $("#redditEmpty").innerHTML = rd.length ? "" : rdStatus.needs_keys
+      ? `<div class="empty"><b>Reddit blocks anonymous requests from servers, so this needs free Reddit API keys.</b>
+          <ol><li>Sign in to Reddit, open <a href="https://www.reddit.com/prefs/apps" target="_blank" rel="noopener">reddit.com/prefs/apps</a>, click “create another app”, choose <b>script</b> and use <code>http://localhost</code> as the redirect URL.</li>
+          <li>In Vercel → designerslab-trends → Settings → Environment Variables, add <code>REDDIT_CLIENT_ID</code> (the code under the app name) and <code>REDDIT_CLIENT_SECRET</code>.</li>
+          <li>Redeploy. Real posts, upvotes and comments will show here.</li></ol></div>`
+      : `<div class="empty">No new posts ${wl} in the tracked design subreddits.</div>`;
+
+    // header
+    const age = hoursAgo(data.generated_at);
+    $("#updatedText").textContent = `Data from ${dur(age)} ago`;
+    $("#updatedText").title = exact(data.generated_at);
+    $("#liveDot").className = "dot " + (age < 0.5 ? "live" : "stale");
   }
 
   function syncControls() {
     $$("#windowSeg button").forEach((b) => b.classList.toggle("active", +b.dataset.win === state.win));
-    $("#geo").value = state.geo; $("#cat").value = state.cat; $("#sort").value = state.sort; $("#q").value = state.q;
-    ["nicheOnly", "activeOnly", "hideCovered", "newOnly"].forEach((k) => { $("#" + k).checked = !!state[k]; });
+    $("#minSearches").value = String(state.minSearches);
+    $("#country").value = state.country;
+    $("#activeOnly").checked = state.activeOnly;
+    $("#showOther").checked = state.showOther;
   }
-  function persist() { const { q, ...rest } = state; store.set("filters", rest); }
+  function fillCountries(data) {
+    const sel = $("#country");
+    if (sel.options.length > 1) return;
+    sel.innerHTML = `<option value="">All countries</option>` + data.countries.map((c) => `<option value="${c}">${COUNTRY[c] || c}</option>`).join("");
+  }
+  function setState(patch) { Object.assign(state, patch); store.set("state", state); ensureData(); }
 
-  // ---------- events ----------
-  $("#tabs").addEventListener("click", (e) => {
-    const b = e.target.closest("button"); if (!b) return;
-    state.tab = b.dataset.tab; shown = PAGE; persist(); render();
-  });
-  $("#windowSeg").addEventListener("click", (e) => {
-    const b = e.target.closest("button[data-win]"); if (!b) return;
-    state.win = +b.dataset.win; shown = PAGE; syncControls(); persist(); render();
-  });
-  ["geo", "cat", "sort"].forEach((id) => $("#" + id).addEventListener("change", (e) => { state[id] = e.target.value; shown = PAGE; persist(); render(); }));
-  ["nicheOnly", "activeOnly", "hideCovered", "newOnly"].forEach((id) => $("#" + id).addEventListener("change", (e) => { state[id] = e.target.checked; shown = PAGE; persist(); render(); }));
-  let qt; $("#q").addEventListener("input", (e) => { clearTimeout(qt); qt = setTimeout(() => { state.q = e.target.value; shown = PAGE; render(); }, 150); });
-  $("#more").addEventListener("click", () => { shown += PAGE; render(); });
-  $("#refreshBtn").addEventListener("click", () => load(true));
-
-  $("#list").addEventListener("click", (e) => {
-    const card = e.target.closest(".item"); if (!card) return;
-    const it = data.items.find((x) => x.id === card.dataset.id); if (!it) return;
-    const c = e.target.closest("[data-copy]"); if (c) { copy(c.dataset.copy); return; }
-    if (e.target.closest("[data-brief]")) { copy(brief(it)); return; }
-    if (e.target.closest("[data-done]")) {
-      done.has(it.id) ? done.delete(it.id) : done.add(it.id);
-      store.set("done", [...done]); toast(done.has(it.id) ? "Marked as written" : "Moved back"); renderStats(); render(); return;
-    }
-    const head = e.target.closest(".item-head");
-    if (head) {
-      const body = $(".item-body", card);
-      const open = head.getAttribute("aria-expanded") === "true";
-      head.setAttribute("aria-expanded", String(!open));
-      if (!open && !body.innerHTML) body.innerHTML = bodyHTML(it);
-      body.hidden = open;
-    }
-  });
-
-  // ---------- load ----------
-  async function load(manual) {
+  // ---------- loading ----------
+  async function load(hours, force) {
     const btn = $("#refreshBtn"); btn.classList.add("spin");
-    if (!data) $("#list").innerHTML = `<div class="empty">Fetching live trends from Google and Reddit… this can take up to 20 seconds.</div>`;
+    if (!cache[hours]) {
+      $("#gtTable").innerHTML = ""; $("#gtEmpty").innerHTML = `<div class="empty">Fetching live data from Google Trends (${hours === 4 ? "past 4 hours" : WIN_LABEL[hours].replace("in the ", "")})… this can take up to 30 seconds the first time.</div>`;
+      $("#updatedText").textContent = "Loading…";
+    }
     try {
-      let fresh = null;
-      // Vercel: live API (CDN-cached for 30 min). GitHub Pages: static file built by Actions.
+      let data = null;
       if (!location.hostname.endsWith("github.io")) {
         try {
-          const r = await fetch(API_URL);
-          if (r.ok) fresh = await r.json();
-        } catch { /* fall back to the static file */ }
+          const r = await fetch(`/api/trends?hours=${hours}`);
+          if (r.ok) data = await r.json();
+        } catch { /* fall back */ }
       }
-      if (!fresh || !fresh.items) {
-        const r = await fetch(`${DATA_URL}?t=${Math.floor(now() / 60000)}`, { cache: "no-store" });
+      if (!data || !data.scanned) {
+        const r = await fetch(`data/trends-${hours}h.json?t=${Math.floor(now() / 60000)}`, { cache: "no-store" });
         if (!r.ok) throw new Error(r.status);
-        fresh = await r.json();
+        data = await r.json();
       }
-      if (!manual && data && fresh.generated_at === data.generated_at) { renderHeader(); return; }
-      data = fresh;
-      renderHeader(); renderStats(); fillSelects(); render();
-      if (manual) toast("Data reloaded");
-    } catch (err) {
-      $("#updatedText").textContent = "Could not load data";
-      if (!data) $("#list").innerHTML = `<div class="empty">Couldn't load trends right now. Press the reload button to try again.</div>`;
-    } finally { btn.classList.remove("spin"); }
+      cache[hours] = data;
+      fillCountries(data);
+      if (force) toast("Data reloaded");
+    } catch {
+      if (!cache[hours]) $("#gtEmpty").innerHTML = `<div class="empty">Couldn't load data right now. Press the reload button to try again.</div>`;
+    } finally {
+      btn.classList.remove("spin");
+      if (fetchHours() === hours) render();
+    }
   }
+  function ensureData() { const h = fetchHours(); if (cache[h]) render(); else load(h); }
+
+  // ---------- events ----------
+  $("#windowSeg").addEventListener("click", (e) => { const b = e.target.closest("button[data-win]"); if (b) setState({ win: +b.dataset.win }); });
+  $("#minSearches").addEventListener("change", (e) => setState({ minSearches: +e.target.value }));
+  $("#country").addEventListener("change", (e) => setState({ country: e.target.value }));
+  $("#activeOnly").addEventListener("change", (e) => setState({ activeOnly: e.target.checked }));
+  $("#showOther").addEventListener("change", (e) => setState({ showOther: e.target.checked }));
+  $("#refreshBtn").addEventListener("click", () => { delete cache[fetchHours()]; load(fetchHours(), true); });
+
+  document.addEventListener("click", (e) => {
+    const c = e.target.closest("[data-copy]"); if (c) { copy(c.dataset.copy); return; }
+    const s = e.target.closest("[data-set]"); if (s) { setState(JSON.parse(s.dataset.set)); return; }
+    const th = e.target.closest("th[data-sort]"); if (th) { setState({ sort: th.dataset.sort }); return; }
+    if (e.target.closest("a, button")) return;
+    const tr = e.target.closest("tr.main-row");
+    if (tr) { const id = tr.dataset.id; open.has(id) ? open.delete(id) : open.add(id); render(); }
+  });
+
   syncControls();
-  load();
-  setInterval(() => load(false), 5 * 60 * 1000);
-  setInterval(() => { if (data) { renderHeader(); } }, 60 * 1000);
+  ensureData();
+  setInterval(() => load(fetchHours()), 10 * 60 * 1000);
 })();

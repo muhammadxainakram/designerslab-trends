@@ -1,47 +1,42 @@
 # DesignersLab Trend Finder
 
-A free dashboard that finds trending keywords to write about on [designerslab.io](https://designerslab.io).
-It's hosted on **Vercel** (free). The page calls `/api/trends`, a small Python function that fetches
-every source live. Vercel's CDN caches the result for 30 minutes, so the page stays fast and the sources
-aren't hammered.
+Live: **https://designerslab-trends.vercel.app**
 
-It can also run on **GitHub Pages + GitHub Actions** (the workflow in `.github/workflows` refreshes
-`docs/data/trends.json` every 30 minutes and tracks history, e.g. which Google suggestions are new).
-This only works if GitHub Actions is enabled for the account.
+A dashboard that shows **real** trending search data for [designerslab.io](https://designerslab.io).
+Nothing on it is estimated, scored or generated. Every number comes straight from the source.
 
-## Sources (all free, no API keys needed)
+## Data sources
 
-| Source | What it gives you |
+| Source | What you see |
 |---|---|
-| **Google Trends** ("Trending now" RSS) | Real trending searches in US, UK, CA, AU, IN and PK, with search volume, how long each has been trending (e.g. *trending for 2h 15m*) and the news behind it. |
-| **Google Search** (Autocomplete) | What people actually type into Google for your niche seeds (fonts, mockups, templates, Canva, Photoshop, AI prompts, upcoming holidays…). Suggestions that newly appear are flagged **New**. |
-| **Google News** (RSS, last 24h) | Fresh design-industry news: rebrands, new logos, Adobe/Canva/Figma updates, AI image tools. |
-| **Reddit** | Hot posts and questions from design subreddits. Reddit blocks many anonymous requests, so for reliable results add free API keys (see below). |
+| **Google Trends: Trending now** ([trends.google.com/trending](https://trends.google.com/trending)) | The same table Google shows, for 12 countries: **searches** since the trend started, **% increase**, **start time**, **active/ended**, Google's category and Google's **related queries**. A trend is listed only when its title or one of Google's related queries contains a design term from `config.json`. The dashboard shows which query matched. |
+| **Google News** | Design-related headlines with their real publish time. |
+| **Reddit** | New posts from design subreddits with real upvotes, comments and upvotes per hour. Needs free API keys (see below). |
+| **designerslab.io sitemap** | Flags topics the site already has a post for. |
 
-Each item gets an **opportunity score (0–100)** based on:
-- **Relevance** to designerslab.io (fonts, mockups, templates, PSD, AI prompts, seasonal design…)
-- **Momentum** (search volume, upvotes per hour)
-- **Freshness** (how recently it started trending)
-- **Gap check.** The script reads your sitemap, and topics you already cover get a **Covered** badge and a lower score.
+Time windows: past 2h, 4h, 24h, 48h and 7 days (Google's own windows; "2h" keeps only trends that started in the last 2 hours).
+Filters: minimum searches (default 1K+), country, still-trending-only.
 
-Every item also comes with ready-to-use **article title ideas**, a **Copy brief** button, and links to the live Google results and Google Trends.
+> **Note:** design keywords rarely reach Google's trending list. When the design table is empty, it means Google really had no
+> design-related trend at that volume. The summary shows how many trends were checked.
+
+## How it runs
+
+- **Vercel (current):** `api/trends.py` fetches everything live when the page loads. Vercel's CDN caches each window for 15 minutes.
+- **GitHub Actions + Pages (optional):** `.github/workflows/update-trends.yml` writes `docs/data/trends-*.json` every 30 minutes. This needs GitHub Actions enabled on the account.
+
+## Reddit API keys (free)
+
+1. Sign in to Reddit, open <https://www.reddit.com/prefs/apps>, click **create another app…**, choose **script** and use `http://localhost` as the redirect URL.
+2. In Vercel → project → **Settings → Environment Variables**, add `REDDIT_CLIENT_ID` (the code under the app name) and `REDDIT_CLIENT_SECRET`. Then redeploy.
 
 ## Customise
 
-Edit [`config.json`](config.json) to change countries, seed keywords, news queries, subreddits, niche terms or holidays. Pushing a change runs the workflow right away.
-
-## Optional: Reddit API keys (free)
-
-1. Sign in to Reddit, go to <https://www.reddit.com/prefs/apps> and click **create another app…**. Choose the **script** type and use any redirect URL (e.g. `http://localhost`).
-2. In this repo, go to **Settings → Secrets and variables → Actions** and add two secrets:
-   - `REDDIT_CLIENT_ID`: the short id shown under the app name
-   - `REDDIT_CLIENT_SECRET`: the secret
+Edit [`config.json`](config.json) to change the countries, design terms, news searches or subreddits.
 
 ## Run locally
 
 ```bash
-python scripts/fetch_trends.py         # writes docs/data/trends.json
+python scripts/fetch_trends.py                 # writes docs/data/trends-{4,24,48,168}h.json
 python -m http.server 8000 --directory docs
 ```
-
-No pip packages are needed. It uses only the Python standard library.

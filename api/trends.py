@@ -1,15 +1,14 @@
-"""Vercel serverless function: GET /api/trends -> live dashboard JSON.
+"""Vercel serverless function: GET /api/trends?hours=4|24|48|168 -> live dashboard JSON.
 
-Vercel's CDN caches the response for 30 minutes (s-maxage), so the sources are
-hit at most about twice an hour no matter how often the page is opened.
+Vercel's CDN caches each window for 15 minutes (s-maxage), then serves the
+cached copy while it refreshes in the background.
 """
 import json
-import os
 import sys
+import urllib.parse
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 
-os.environ["TREND_LIVE"] = "1"
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
 import fetch_trends  # noqa: E402
@@ -17,11 +16,16 @@ import fetch_trends  # noqa: E402
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
+        qs = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
         try:
-            payload = fetch_trends.collect(fetch_trends.empty_history())
+            hours = int(qs.get("hours", ["4"])[0])
+        except ValueError:
+            hours = 4
+        try:
+            payload = fetch_trends.collect(hours)
             body = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
             status = 200
-            cache = "public, max-age=0, s-maxage=1800, stale-while-revalidate=3600"
+            cache = "public, max-age=0, s-maxage=900, stale-while-revalidate=1800"
         except Exception as e:  # noqa: BLE001
             body = json.dumps({"error": str(e)[:300]}).encode("utf-8")
             status, cache = 500, "no-store"
