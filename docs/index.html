@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DesignersLab Trend Finder</title>
-  <meta name="description" content="Real Google Trends, Google News and Reddit data, filtered to design topics for designerslab.io.">
+  <meta name="description" content="Real Google Trends, Google Search, Google News and Reddit data turned into a daily content plan for designerslab.io.">
   <meta name="robots" content="noindex">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%235b4bff'/><path d='M7 22l6-7 4 4 8-9' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19,7 +19,7 @@
         <span class="logo" aria-hidden="true"><svg viewBox="0 0 32 32"><rect width="32" height="32" rx="8"/><path d="M7 22l6-7 4 4 8-9"/></svg></span>
         <div>
           <h1>Trend Finder</h1>
-          <p class="sub">Real search data, filtered for <a href="https://designerslab.io" target="_blank" rel="noopener">designerslab.io</a></p>
+          <p class="sub">Real search data → daily articles for <a href="https://designerslab.io" target="_blank" rel="noopener">designerslab.io</a></p>
         </div>
       </div>
       <div class="updated">
@@ -28,86 +28,227 @@
         <button class="icon-btn" id="refreshBtn" title="Reload" aria-label="Reload data"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></svg></button>
       </div>
     </div>
+    <nav class="wrap tabs" id="tabs" role="tablist">
+      <button data-tab="today" class="active">Today</button>
+      <button data-tab="trends">Trends</button>
+      <button data-tab="seasonal">Seasonal</button>
+      <button data-tab="questions">Questions</button>
+      <button data-tab="audit">Site audit</button>
+      <button data-tab="playbook">Playbook</button>
+    </nav>
   </header>
 
   <main class="wrap">
-    <section class="controls">
-      <div class="seg" id="windowSeg" role="group" aria-label="Time window">
-        <button data-win="2">Past 2 hours</button>
-        <button data-win="4" class="active">Past 4 hours</button>
-        <button data-win="24">Past 24 hours</button>
-        <button data-win="48">Past 48 hours</button>
-        <button data-win="168">Past 7 days</button>
-      </div>
-      <div class="row">
-        <label class="field">Min. searches
-          <select id="minSearches">
-            <option value="0">Any</option>
-            <option value="100">100+</option>
-            <option value="500">500+</option>
-            <option value="1000" selected>1K+</option>
-            <option value="5000">5K+</option>
-            <option value="10000">10K+</option>
-            <option value="50000">50K+</option>
-          </select>
-        </label>
-        <label class="field">Country
-          <select id="country"><option value="">All countries</option></select>
-        </label>
-        <label class="check"><input type="checkbox" id="activeOnly"> Still trending only</label>
-        <label class="check"><input type="checkbox" id="showOther"> Also show non-design trends</label>
-      </div>
-    </section>
 
-    <section class="summary" id="summary" aria-live="polite"></section>
-
-    <section class="block">
+    <!-- ============ TODAY ============ -->
+    <section class="panel" id="panel-today">
       <div class="block-head">
-        <h2>Google Trends · design-related</h2>
-        <p>Google's <a href="https://trends.google.com/trending" target="_blank" rel="noopener">Trending now</a> data. A trend is listed only when its title or one of Google's related queries contains a design term.</p>
+        <h2>Today's two articles</h2>
+        <p>One <b>fast</b> article that catches demand happening right now, and one <b>planned</b> article that ranks before a seasonal peak or answers an evergreen question. Each pick follows a fixed rule shown on the card, using real data only.</p>
       </div>
-      <div class="table-wrap"><table class="tbl" id="gtTable"></table></div>
-      <div id="gtEmpty"></div>
+      <div class="picks" id="picks"><div class="empty">Loading today's data…</div></div>
+
+      <div class="block">
+        <div class="block-head"><h2>Daily routine (about 2–3 hours)</h2></div>
+        <ol class="routine">
+          <li><b>Check Today (5 min).</b> Open a pick and click <b>Brief</b>. It collects the real keyword, related searches, questions, sources and internal links.</li>
+          <li><b>Write the fast article (60–90 min).</b> 800–1,200 words. Answer the main query in the first 2 sentences. Add an original preview image or a free download, a short FAQ, and links to 3–5 of your posts.</li>
+          <li><b>Publish and get indexed (5 min).</b> Search Console → URL Inspection → <i>Request indexing</i>. Also submit through IndexNow (Rank Math Instant Indexing), which covers Bing and ChatGPT search.</li>
+          <li><b>Distribute (10 min).</b> Pin 2 images on Pinterest. Share on X or Facebook groups. Answer the matching Reddit question if one exists (only where it helps, with no link spam).</li>
+          <li><b>Write the planned article (60–90 min).</b> Use the Seasonal or Questions tab. Aim for 1,200–2,000 words with a comparison table, licence notes and an FAQ.</li>
+          <li><b>Weekly (Friday, 30 min).</b> In Search Console, find posts at positions 8–20 and improve them: add questions, update the year, add internal links. Then run the Site audit tab.</li>
+        </ol>
+      </div>
     </section>
 
-    <section class="block" id="otherBlock" hidden>
+    <!-- ============ TRENDS ============ -->
+    <section class="panel" id="panel-trends" hidden>
+      <section class="controls">
+        <div class="seg" id="windowSeg" role="group" aria-label="Time window">
+          <button data-win="2">Past 2 hours</button>
+          <button data-win="4" class="active">Past 4 hours</button>
+          <button data-win="24">Past 24 hours</button>
+          <button data-win="48">Past 48 hours</button>
+          <button data-win="168">Past 7 days</button>
+        </div>
+        <div class="row">
+          <label class="field">Min. searches
+            <select id="minSearches">
+              <option value="0">Any</option><option value="100">100+</option><option value="500">500+</option>
+              <option value="1000" selected>1K+</option><option value="5000">5K+</option><option value="10000">10K+</option><option value="50000">50K+</option>
+            </select>
+          </label>
+          <label class="field">Country <select id="country"><option value="">All countries</option></select></label>
+          <label class="check"><input type="checkbox" id="activeOnly"> Still trending only</label>
+          <label class="check"><input type="checkbox" id="showOther"> Also show non-design trends</label>
+        </div>
+      </section>
+      <section class="summary" id="summary" aria-live="polite"></section>
+
+      <section class="block">
+        <div class="block-head">
+          <h2>Design angles on big trends</h2>
+          <p>Real trending searches where <b>Google's autocomplete shows people also search for a design asset</b>, such as "&lt;trend&gt; font", "logo png" or "wallpaper". This is usually where the fast traffic is.</p>
+        </div>
+        <div class="table-wrap"><table class="tbl" id="angleTable"></table></div>
+        <div id="angleEmpty"></div>
+      </section>
+
+      <section class="block">
+        <div class="block-head">
+          <h2>Google Trends · design-related</h2>
+          <p>Trends whose title or related queries in Google's <a href="https://trends.google.com/trending" target="_blank" rel="noopener">Trending now</a> contain a design term.</p>
+        </div>
+        <div class="table-wrap"><table class="tbl" id="gtTable"></table></div>
+        <div id="gtEmpty"></div>
+      </section>
+
+      <section class="block" id="otherBlock" hidden>
+        <div class="block-head"><h2>Google Trends · other (not design)</h2><p>For context only.</p></div>
+        <div class="table-wrap"><table class="tbl" id="otherTable"></table></div>
+      </section>
+
+      <section class="block">
+        <div class="block-head"><h2>Google News · design stories</h2><p>Real headlines with their publish time. Writing quickly on a fresh story helps it get indexed while it's new.</p></div>
+        <div class="table-wrap"><table class="tbl" id="newsTable"></table></div>
+        <div id="newsEmpty"></div>
+      </section>
+
+      <section class="block">
+        <div class="block-head"><h2>Reddit · design communities</h2><p>New posts with real upvotes and comments. Questions here make good articles.</p></div>
+        <div class="table-wrap"><table class="tbl" id="redditTable"></table></div>
+        <div id="redditEmpty"></div>
+      </section>
+    </section>
+
+    <!-- ============ SEASONAL ============ -->
+    <section class="panel" id="panel-seasonal" hidden>
       <div class="block-head">
-        <h2>Google Trends · other (not design)</h2>
-        <p>Shown for context only. These trends did not match any design term.</p>
+        <h2>Seasonal planner</h2>
+        <p>New posts usually need 3–8 weeks to get indexed and climb before a seasonal peak, so publish by the <b>Publish by</b> date (event minus 45 days). Each event lists the design searches <b>Google's autocomplete really returns</b>; the number is how many real suggestions Google gave. Dates marked ≈ follow the lunar calendar, so check them.</p>
       </div>
-      <div class="table-wrap"><table class="tbl" id="otherTable"></table></div>
+      <div class="table-wrap"><table class="tbl" id="seasonTable"></table></div>
+      <div id="seasonEmpty"><div class="empty">Loading the planner…</div></div>
     </section>
 
-    <section class="block">
+    <!-- ============ QUESTIONS ============ -->
+    <section class="panel" id="panel-questions" hidden>
       <div class="block-head">
-        <h2>Google News · design stories</h2>
-        <p>Headlines from Google News with their real publish time. Writing quickly on a fresh story helps you get indexed while it's new.</p>
+        <h2>Question backlog</h2>
+        <p>Real questions from Google's autocomplete for design topics. Questions are ideal for AEO (featured snippets, People Also Ask, AI answers): use the question as an H2 and answer it in the first 40–60 words.</p>
       </div>
-      <div class="table-wrap"><table class="tbl" id="newsTable"></table></div>
-      <div id="newsEmpty"></div>
+      <div class="row controls">
+        <input type="search" id="qSearch" placeholder="Filter questions…" aria-label="Filter questions">
+        <label class="check"><input type="checkbox" id="qUncovered" checked> Only topics I haven't covered</label>
+      </div>
+      <div class="table-wrap"><table class="tbl" id="qTable"></table></div>
+      <div id="qEmpty"></div>
     </section>
 
-    <section class="block">
+    <!-- ============ AUDIT ============ -->
+    <section class="panel" id="panel-audit" hidden>
       <div class="block-head">
-        <h2>Reddit · design communities</h2>
-        <p>New posts from r/graphic_design, r/typography, r/identifythisfont, r/logodesign, r/photoshop, r/canva and others, with real upvotes and comments.</p>
+        <h2>Live site audit: designerslab.io</h2>
+        <p>Checks the homepage, robots.txt, llms.txt and your newest posts as they are live right now. Fix the red items first.</p>
       </div>
-      <div class="table-wrap"><table class="tbl" id="redditTable"></table></div>
-      <div id="redditEmpty"></div>
+      <section class="summary" id="auditSummary"></section>
+      <div class="table-wrap"><table class="tbl" id="auditTable"></table></div>
+      <div id="auditEmpty"><div class="empty">Open this tab to run the audit (about 10 seconds).</div></div>
+      <div class="block"><div class="block-head"><h2>Pages checked</h2></div><div class="table-wrap"><table class="tbl" id="auditPages"></table></div></div>
     </section>
 
-    <section class="help">
-      <h2>What the numbers mean</h2>
-      <ul>
-        <li><b>Searches</b>: Google's own volume bucket for the trend since it started (e.g. 1K+ means 1,000–1,999 searches).</li>
-        <li><b>Increase</b>: how much searches went up compared with before the trend started, as reported by Google.</li>
-        <li><b>Started</b>: when Google detected the trend. <b>Active</b> means it is still trending; <b>Ended</b> means it stopped.</li>
-        <li><b>Why it matched</b>: the real query (the trend itself or one of Google's related queries) that contains a design term.</li>
-        <li><b>On your site</b>: whether designerslab.io already has a post whose URL matches this topic.</li>
-      </ul>
-      <p class="fine">Live data is cached for up to 15 minutes. Nothing on this page is estimated or generated.</p>
+    <!-- ============ PLAYBOOK ============ -->
+    <section class="panel playbook" id="panel-playbook" hidden>
+      <div class="block-head"><h2>Playbook: SEO, AEO, GEO and authority (DR)</h2>
+        <p>What to do on designerslab.io, in priority order. Run the Site audit tab to see which items your pages already pass.</p></div>
+
+      <details open><summary>1. Get every new article indexed within hours</summary>
+        <ul>
+          <li>After publishing, use <b>Search Console → URL Inspection → Request indexing</b>.</li>
+          <li>Install <b>Rank Math → Instant Indexing</b> (IndexNow). It pings Bing, Yandex and Seznam the moment you publish. ChatGPT search and Copilot use Bing's index.</li>
+          <li>Add the site to <b>Bing Webmaster Tools</b> (you can import it from Search Console in one click) and submit <code>sitemap_index.xml</code>.</li>
+          <li>Link the new post from the homepage "Latest" block and from 2–3 older, already-indexed posts. Google finds new URLs through internal links fastest.</li>
+          <li>Apply for <b>Google News</b> in Publisher Center, and enable the News sitemap if you publish trend articles often.</li>
+        </ul>
+      </details>
+
+      <details open><summary>2. On-page SEO for each article</summary>
+        <ul>
+          <li>Put the exact keyword in the <b>title (≤60 chars)</b>, URL slug, H1 and first 100 words. Write a 140–160 character meta description.</li>
+          <li>Use one H1. Base your H2s on Google's related queries and autocomplete (the Brief button lists them).</li>
+          <li>Add <b>original images</b> (previews of the font or mockup) as WebP, with descriptive alt text and file names. Google Images and Pinterest bring a lot of design traffic.</li>
+          <li>Add 3–5 internal links to related posts and to the matching resource category. Add 1–2 external links to the official source (foundry, brand, news).</li>
+          <li>For trend posts, update the article when news changes and keep the date honest. Keep "max-image-preview:large" enabled for Google Discover.</li>
+        </ul>
+      </details>
+
+      <details><summary>3. AEO: win featured snippets, People Also Ask and voice answers</summary>
+        <ul>
+          <li>Phrase 2–4 H2s exactly like real questions ("What font is the Ohio State logo?").</li>
+          <li>Answer directly in the <b>first 40–60 words</b> under each question, then expand.</li>
+          <li>End with an <b>FAQ block</b> (Rank Math FAQ block, which adds FAQPage schema) of 3–5 questions from the Questions tab.</li>
+          <li>Use comparison <b>tables</b> (font, style, licence, download) and numbered steps for how-tos (HowTo-style lists).</li>
+        </ul>
+      </details>
+
+      <details><summary>4. GEO: get cited by ChatGPT, Gemini, Perplexity and AI Overviews</summary>
+        <ul>
+          <li><b>Allow AI crawlers.</b> If the audit shows GPTBot, ClaudeBot or Google-Extended blocked, remove those <code>Disallow: /</code> lines, or AI assistants can't use or cite your pages:
+<pre>User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+Sitemap: https://designerslab.io/sitemap_index.xml</pre></li>
+          <li>Keep <b>/llms.txt</b> current. List your best guides and resource categories with a one-line description each.</li>
+          <li>Write <b>clear, self-contained facts</b> that AI can quote, e.g. "The Netflix logo uses Netflix Sans, a custom typeface made by Dalton Maag in 2018."</li>
+          <li>Add <b>original data</b>: "Most downloaded mockups this month", "Top 20 fonts searched in 2026" (use this tool's data). AI engines and journalists cite statistics.</li>
+          <li>Show <b>author expertise</b> (bio, portfolio, Person schema) and keep <b>dateModified</b> current. Mention the brand the same way everywhere (Designers Lab / designerslab.io).</li>
+        </ul>
+      </details>
+
+      <details><summary>5. Raise Domain Rating (backlinks) safely</summary>
+        <ul>
+          <li><b>Use your free resources as link bait.</b> On every download page, add "Free for commercial use, credit appreciated: Designers Lab" with a copyable HTML credit link.</li>
+          <li><b>Resource-page outreach:</b> search <code>"free mockups" inurl:resources</code>, <code>"design resources" "useful links"</code> and email the page owners about your collection.</li>
+          <li><b>Digital PR with data:</b> publish a monthly "Design search trends" report from this tool and pitch it to design blogs and newsletters.</li>
+          <li><b>Journalist requests:</b> answer design and branding questions on Qwoted, Featured.com and SourceBottle. Quotes earn links from high-DR sites.</li>
+          <li><b>Profiles and communities:</b> Behance, Dribbble, Pinterest, Product Hunt (launch the AI studio or the color generator), and design directories. Reddit and Quora answers that solve the problem.</li>
+          <li><b>Creators you feature:</b> tell the foundries and mockup creators (Pixelbuddha, Mockupbee…) when you feature them. Many share or link back.</li>
+          <li><b>Guest posts</b> on design and marketing blogs (2 per month), plus <b>broken-link building</b> for dead "free fonts" pages. Avoid paid link farms and PBNs, which can get the site penalised.</li>
+        </ul>
+      </details>
+
+      <details><summary>6. Track what works</summary>
+        <ul>
+          <li>Search Console → Performance → filter by page. A trend article should get impressions within 24–48 hours. If it doesn't, check indexing.</li>
+          <li>Keep a simple log: date, keyword, source (trend, angle, seasonal or question), indexed (yes/no), clicks after 7 and 30 days. Do more of what wins.</li>
+          <li>Each month, refresh the top 10 posts (year, new items, FAQ) and re-request indexing.</li>
+        </ul>
+      </details>
     </section>
   </main>
+
+  <!-- brief drawer -->
+  <div class="drawer" id="drawer" hidden>
+    <div class="drawer-card" role="dialog" aria-modal="true" aria-labelledby="briefTitle">
+      <div class="drawer-head">
+        <h2 id="briefTitle">Article brief</h2>
+        <div class="actions"><button class="btn" id="copyBrief">Copy as Markdown</button><button class="icon-btn" id="closeBrief" aria-label="Close">✕</button></div>
+      </div>
+      <div class="drawer-body" id="briefBody"></div>
+    </div>
+  </div>
 
   <div class="toast" id="toast" role="status"></div>
   <script src="app.js"></script>

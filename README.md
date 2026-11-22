@@ -5,6 +5,21 @@ Live: **https://designerslab-trends.vercel.app**
 A dashboard that shows **real** trending search data for [designerslab.io](https://designerslab.io).
 Nothing on it is estimated, scored or generated. Every number comes straight from the source.
 
+## Tabs
+
+| Tab | What it gives you |
+|---|---|
+| **Today** | Two picks a day: one *fast* article (real trend or design angle or fresh news) and one *planned* article (seasonal gap or evergreen question). The rule behind each pick is shown. |
+| **Trends** | Google Trending now (searches, % increase, start time, status) filtered to design, **design angles** (big trends where Google autocomplete shows "<trend> font / logo / wallpaper / png" searches), Google News and Reddit. |
+| **Seasonal** | Events in the next 120 days with publish-by dates (event − 45 days) and the real Google design searches for each, marked covered / not covered. |
+| **Questions** | Real Google autocomplete questions for design seeds, for AEO (H2s, FAQ, featured snippets). |
+| **Site audit** | Live checks of designerslab.io: robots.txt AI-crawler access, llms.txt, schema, titles, meta, H1, alt text, FAQ, question headings, author, dateModified, speed. |
+| **Playbook** | Indexing, on-page SEO, AEO, GEO and safe link-building (DR) steps. |
+
+Every row has a **Brief** button: a Markdown article brief with real secondary keywords, questions, sources, internal links from your sitemap and an SEO/AEO/GEO checklist.
+
+API endpoints (Vercel): `/api/trends?hours=4|24|48|168` (15 min cache), `/api/planner` (6 h), `/api/audit` (12 h).
+
 ## Data sources
 
 | Source | What you see |
@@ -38,5 +53,6 @@ Edit [`config.json`](config.json) to change the countries, design terms, news se
 
 ```bash
 python scripts/fetch_trends.py                 # writes docs/data/trends-{4,24,48,168}h.json
+cd scripts && python seasonal_planner.py && python site_audit.py   # planner.json, audit.json
 python -m http.server 8000 --directory docs
 ```

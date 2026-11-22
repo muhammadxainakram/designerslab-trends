@@ -31,6 +31,31 @@
     "Google Doodle"
   ],
 
+  "planner": {
+    "lookahead_days": 120,
+    "publish_lead_days": 45,
+    "latest_useful_days": 10,
+    "design_suffixes": [" fonts", " font", " templates", " svg", " png", " wallpaper", " flyer", " clipart",
+                        " ai prompt", " mockup", " poster", " card design"],
+    "manual_events": [
+      {"name": "Pantone Color of the Year", "date": "2026-12-04", "approx": true, "query": "pantone color of the year"},
+      {"name": "Diwali", "date": "2027-10-29", "approx": true},
+      {"name": "Chinese New Year", "date": "2027-02-06", "approx": false},
+      {"name": "Ramadan", "date": "2027-02-08", "approx": true},
+      {"name": "Eid al-Fitr", "date": "2027-03-10", "approx": true, "query": "eid mubarak"},
+      {"name": "Holi", "date": "2027-03-22", "approx": true},
+      {"name": "Eid al-Adha", "date": "2027-05-17", "approx": true, "query": "eid al adha"},
+      {"name": "Pakistan Independence Day", "date": "2027-08-14", "approx": false, "query": "14 august"}
+    ]
+  },
+
+  "question_seeds": [
+    "what font is", "what font does", "what font is used in", "font similar to", "best free fonts for",
+    "how to make a logo", "how to make a mockup", "how to use mockup", "how to add font to", "how to remove background",
+    "canva how to", "photoshop how to", "illustrator how to", "how to design a", "what size is a",
+    "free mockup for", "free template for", "ai prompt for", "best ai image generator for", "color palette for"
+  ],
+
   "subreddits": [
     "graphic_design", "typography", "identifythisfont", "logodesign", "photoshop",
     "Design", "canva", "AdobeIllustrator", "midjourney", "web_design", "branding"

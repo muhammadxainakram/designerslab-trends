@@ -243,6 +243,89 @@ def google_trends(hours: int, posts: list[dict]) -> tuple[list[dict], list[dict]
     return design, others[:250], scanned
 
 
+# --------------------------------------------------------------------------- Google Autocomplete
+def suggest(q: str, gl: str = "us") -> list[str]:
+    """Real Google Search autocomplete suggestions for a query."""
+    url = (f"https://suggestqueries.google.com/complete/search?client=firefox&hl=en&gl={gl.lower()}&q="
+           + urllib.parse.quote(q))
+    try:
+        data = json.loads(http_get(url, timeout=8, retries=0))
+        return [s for s in data[1] if isinstance(s, str)]
+    except Exception:  # noqa: BLE001
+        return []
+
+
+def suggest_many(queries: list[tuple], deadline: float | None = None, workers: int = 24) -> dict:
+    """queries: [(key, query, gl)] -> {(key, query): [suggestions]}; stops starting new ones after deadline."""
+    def run(item):
+        key, q, gl = item
+        if deadline and time.time() > deadline:
+            return key, q, None
+        return key, q, suggest(q, gl)
+
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        return {(k, q): s for k, q, s in ex.map(run, queries)}
+
+
+ANGLE_SUFFIXES = (" font", " logo", " wallpaper", " png")
+
+
+def design_angles(design: list[dict], others: list[dict], posts: list[dict], budget_s: float = 22) -> list[dict]:
+    """Big real trends (any topic) where Google's own autocomplete proves people
+    also search for a design asset: '<trend> font', '<trend> logo png', ..."""
+    pool: dict[str, dict] = {}
+    for t in design + others:
+        if not t["active"] or t["searches"] < 1000:
+            continue
+        k = t["keyword"].lower()
+        if k in pool:
+            pool[k]["countries"].add(t["country"])
+            if t["searches"] > pool[k]["searches"]:
+                pool[k].update({x: t[x] for x in ("searches", "increase_pct", "started_at", "country")})
+        else:
+            pool[k] = {**t, "countries": {t["country"]}}
+    cands = sorted(pool.values(), key=lambda t: t["searches"], reverse=True)[:28]
+    queries = [(c["keyword"], c["keyword"] + s, c["country"]) for c in cands for s in ANGLE_SUFFIXES]
+    res = suggest_many(queries, deadline=time.time() + budget_s)
+
+    out = []
+    for c in cands:
+        found: list[str] = []
+        checked = 0
+        for s in ANGLE_SUFFIXES:
+            q = c["keyword"] + s
+            sugg = res.get((c["keyword"], q))
+            if sugg is None:
+                continue
+            checked += 1
+            for x in sugg:
+                if x.strip().lower() != q.lower() and design_match(x, [], []) and x not in found:
+                    found.append(x)
+        if not found:
+            continue
+        top = design_match(found[0], [], []) or {}
+        out.append({
+            "id": f"ga-{slugify(c['keyword'])}",
+            "keyword": c["keyword"],
+            "searches": c["searches"],
+            "increase_pct": c["increase_pct"],
+            "started_at": c["started_at"],
+            "active": True,
+            "countries": sorted(c["countries"]),
+            "google_categories": c["google_categories"],
+            "related_queries": c["related_queries"],
+            "related_count": c["related_count"],
+            "design_suggestions": found[:15],
+            "suggestion_count": len(found),
+            "group": top.get("group", ""),
+            "covered": coverage(found[0], posts),
+        })
+    out.sort(key=lambda a: (a["searches"], a["suggestion_count"]), reverse=True)
+    STATUS["design_angles"] = {"ok": True, "checked_trends": len(cands), "queries": len(queries),
+                               "answered": sum(v is not None for v in res.values())}
+    return out
+
+
 # --------------------------------------------------------------------------- Google News
 def google_news(hours: int, posts: list[dict]) -> list[dict]:
     when = "1d" if hours <= 24 else ("2d" if hours <= 48 else "7d")
@@ -371,15 +454,19 @@ def collect(hours: int = 4) -> dict:
         f_news = ex.submit(google_news, hours, posts)
         f_rd = ex.submit(reddit, hours, posts)
         design, others, scanned = f_gt.result()
+        # Use whatever time is left (Vercel limit 60s) for the autocomplete checks.
+        angles = design_angles(design, others, posts, budget_s=max(5.0, 40 - (time.time() - t0)))
         news = f_news.result()
         rd = f_rd.result()
     log(f"collected {hours}h in {time.time() - t0:.1f}s: {len(design)} design trends "
-        f"(of {scanned['total']} scanned), {len(news)} news, {len(rd)} reddit")
+        f"(of {scanned['total']} scanned), {len(angles)} design angles, {len(news)} news, {len(rd)} reddit")
     return {
         "generated_at": iso_ts(time.time()),
         "window_hours": hours,
         "countries": CONFIG["countries"],
-        "site": {"url": CONFIG["site"]["url"], "posts": len(posts)},
+        "site": {"url": CONFIG["site"]["url"], "posts": len(posts),
+                 "post_urls": [p["url"] for p in posts]},
+        "design_angles": angles,
         "status": STATUS,
         "scanned": scanned,
         "google_trends": design,

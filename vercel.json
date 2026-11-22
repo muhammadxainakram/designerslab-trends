@@ -5,9 +5,9 @@
   "installCommand": "",
   "outputDirectory": "docs",
   "functions": {
-    "api/trends.py": {
+    "api/*.py": {
       "maxDuration": 60,
-      "includeFiles": "{config.json,scripts/fetch_trends.py}"
+      "includeFiles": "{config.json,scripts/**,api/_common.py}"
     }
   }
 }
